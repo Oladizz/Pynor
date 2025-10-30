@@ -1,0 +1,5 @@
+{
+  "name": "Pynor - Site Ping Service",
+  "description": "A sleek and modern web application to ping websites and check their status and response time. Pynor provides real-time feedback on website availability with a clean, user-friendly interface.",
+  "requestFramePermissions": []
+}
