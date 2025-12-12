@@ -1,23 +1,24 @@
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
-import type { AppSettings, LandingPageContent, AnimationStyle } from '../types';
+import type { AppSettings, LandingPageContent, AnimationStyle, AppTheme } from '../types';
 
 const SETTINGS_KEY = 'pynor_app_settings';
 
 const DEFAULT_LANDING_CONTENT: LandingPageContent = {
-  heroTitle: 'Simple, Fast, and Elegant',
-  heroSubtitle: "Pynor is a modern, sleek service to monitor any website's availability and performance with just a click. Get real-time feedback and historical data, all in one place.",
-  feature1Title: 'Real-time Pinging',
-  feature1Description: 'Instantly check the status, response time, and availability of any website from our global network.',
-  feature2Title: 'Detailed History & Stats',
-  feature2Description: 'Track the performance of your sites over time with a detailed, chronological history and uptime statistics for each one.',
-  feature3Title: 'AI-Powered Insights',
-  feature3Description: 'Leverage the power of Gemini to analyze your ping data and get intelligent summaries and suggestions.',
+  heroTitle: 'Global Site Monitoring',
+  heroSubtitle: "Pynor delivers precision monitoring with a futuristic edge. Track availability, latency, and uptime in real-time.",
+  feature1Title: 'Instant Pings',
+  feature1Description: 'Zero-latency checks on your infrastructure status globally.',
+  feature2Title: 'Data Retention',
+  feature2Description: 'Comprehensive history logs to analyze performance trends.',
+  feature3Title: 'AI Analysis',
+  feature3Description: 'Gemini-powered insights into your network health.',
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
   logoUrl: '',
   landingContent: DEFAULT_LANDING_CONTENT,
   animationStyle: 'fade',
+  theme: 'cyber',
 };
 
 
@@ -26,6 +27,7 @@ interface AppSettingsContextType {
     updateLogoUrl: (url: string) => void;
     updateLandingContent: (content: LandingPageContent) => void;
     updateAnimationStyle: (style: AnimationStyle) => void;
+    toggleTheme: () => void;
 }
 
 const AppSettingsContext = createContext<AppSettingsContextType | undefined>(undefined);
@@ -37,7 +39,8 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         try {
             const storedSettings = localStorage.getItem(SETTINGS_KEY);
             if (storedSettings) {
-                setSettings(JSON.parse(storedSettings));
+                // Merge with default in case new keys (like theme) were added
+                setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(storedSettings) });
             } else {
                  localStorage.setItem(SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
             }
@@ -47,11 +50,17 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     }, []);
 
+    // Apply Animation Classes
     useEffect(() => {
-        // Remove old animation classes and add the current one to the body
         document.body.classList.remove('anim-fade', 'anim-slide', 'anim-none');
         document.body.classList.add(`anim-${settings.animationStyle}`);
     }, [settings.animationStyle]);
+
+    // Apply Theme Classes
+    useEffect(() => {
+        document.body.classList.remove('theme-cyber', 'theme-classic');
+        document.body.classList.add(`theme-${settings.theme}`);
+    }, [settings.theme]);
 
     const updateLogoUrl = useCallback((url: string) => {
         setSettings(prevSettings => {
@@ -77,9 +86,22 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         });
     }, []);
 
-    const value = { settings, updateLogoUrl, updateLandingContent, updateAnimationStyle };
+    const toggleTheme = useCallback(() => {
+        setSettings(prevSettings => {
+            const newTheme = prevSettings.theme === 'cyber' ? 'classic' : 'cyber';
+            const newSettings = { ...prevSettings, theme: newTheme };
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+            return newSettings;
+        });
+    }, []);
+
+    const value = { settings, updateLogoUrl, updateLandingContent, updateAnimationStyle, toggleTheme };
     
-    return React.createElement(AppSettingsContext.Provider, { value }, children);
+    return (
+        <AppSettingsContext.Provider value={value}>
+            {children}
+        </AppSettingsContext.Provider>
+    );
 };
 
 export const useAppSettings = () => {

@@ -11,8 +11,8 @@ export const Logo: React.FC<{ className?: string }> = ({ className }) => {
     }
 
     return (
-        <span className={`text-3xl font-bold tracking-tighter text-text-main ${className}`}>
-            Pynor
+        <span className={`text-3xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary ${className}`} style={{ fontFamily: 'Orbitron, sans-serif' }}>
+            PYNOR
         </span>
     );
 };

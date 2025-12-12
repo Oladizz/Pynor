@@ -1,6 +1,6 @@
 import React from 'react';
 import type { UserRole, PingResult } from '../types';
-import { TrashIcon } from './icons/TrashIcon';
+import { Trash2 } from 'lucide-react';
 
 interface SiteListCardProps {
     sites: string[];
@@ -52,7 +52,6 @@ export const SiteListCard: React.FC<SiteListCardProps> = ({ sites, onSiteSelect,
             </div>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                 {uniqueSites.length > 0 ? (
-                    // FIX: Explicitly type `site` as string to fix type inference issue.
                     uniqueSites.map((site: string) => {
                         const latestResult = results[site]?.[0];
                         const isSelected = site === selectedSite;
@@ -71,7 +70,7 @@ export const SiteListCard: React.FC<SiteListCardProps> = ({ sites, onSiteSelect,
                                     className="text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                                     title="Remove site"
                                 >
-                                    <TrashIcon />
+                                    <Trash2 className="w-4 h-4" />
                                 </button>
                             </div>
                         )

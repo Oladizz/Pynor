@@ -1,9 +1,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-// FIX: Import GoogleGenAI from @google/genai
 import { GoogleGenAI } from '@google/genai';
 import type { PingResult } from '../types';
-import { PaperAirplaneIcon } from './icons/PaperAirplaneIcon';
+import { Send, Bot, User } from 'lucide-react';
 import { Spinner } from './Spinner';
 
 interface PingChatViewProps {
@@ -39,7 +38,6 @@ export const PingChatView: React.FC<PingChatViewProps> = ({ pingHistory }) => {
         setError(null);
         
         try {
-            // FIX: Initialize GoogleGenAI with an object containing the apiKey
             const ai = new GoogleGenAI({apiKey: process.env.API_KEY!});
 
             const historyContext = pingHistory.length > 0
@@ -53,19 +51,14 @@ export const PingChatView: React.FC<PingChatViewProps> = ({ pingHistory }) => {
             For example, if response time is high, you could mention potential causes like server load or network latency.
             If a site is offline, suggest checking the URL or trying again later. Format your response using markdown for readability.`;
 
-            // FIX: Use ai.models.generateContent for a direct request
             const response = await ai.models.generateContent({
-                // FIX: Use 'gemini-2.5-flash' for this text-based task
                 model: 'gemini-2.5-flash',
-                // FIX: Pass the full prompt in the `contents` field
                 contents: `${historyContext}\n\nUser question: ${input}`,
-                // FIX: Use the `config` object for systemInstruction
                 config: {
                     systemInstruction: systemInstruction,
                 }
             });
 
-            // FIX: Access the response text directly via the `.text` property
             const modelResponseText = response.text;
 
             const newModelMessage: ChatMessage = { role: 'model', text: modelResponseText };
@@ -87,19 +80,26 @@ export const PingChatView: React.FC<PingChatViewProps> = ({ pingHistory }) => {
             <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-900/50 rounded-t-lg">
                 {messages.length === 0 && (
                     <div className="text-center text-text-secondary h-full flex flex-col justify-center items-center">
+                        <Bot className="w-12 h-12 mb-4 opacity-50" />
                         <p className="text-lg">Ask me anything about your ping results!</p>
                         <p className="text-sm mt-2">For example: "Which site was the fastest?" or "Summarize the status of my sites."</p>
                     </div>
                 )}
                 {messages.map((msg, index) => (
-                    <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div key={index} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.role === 'user' ? 'bg-primary' : 'bg-secondary'}`}>
+                             {msg.role === 'user' ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-slate-900" />}
+                         </div>
                         <div className={`max-w-xl p-3 rounded-lg ${msg.role === 'user' ? 'bg-primary text-white' : 'bg-slate-700 text-text-main'}`}>
                             <div className="prose prose-invert prose-sm" dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
                         </div>
                     </div>
                 ))}
                  {isLoading && (
-                    <div className="flex justify-start">
+                    <div className="flex justify-start items-center gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+                             <Bot className="w-5 h-5 text-slate-900" />
+                         </div>
                         <div className="max-w-md p-3 rounded-lg bg-slate-700 text-text-main flex items-center gap-2">
                             <Spinner className="w-4 h-4" />
                             <span>Thinking...</span>
@@ -124,7 +124,7 @@ export const PingChatView: React.FC<PingChatViewProps> = ({ pingHistory }) => {
                         disabled={isLoading || !input.trim()}
                         aria-label="Send message"
                     >
-                       {isLoading ? <Spinner className="w-5 h-5" /> : <PaperAirplaneIcon className="w-5 h-5" />}
+                       {isLoading ? <Spinner className="w-5 h-5" /> : <Send className="w-5 h-5" />}
                     </button>
                 </div>
             </form>

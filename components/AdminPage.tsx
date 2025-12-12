@@ -1,364 +1,408 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import type { User, UserRole, LandingPageContent, AnimationStyle } from '../types';
 import { useAppSettings } from '../hooks/useAppSettings';
-import { ArrowLeftIcon } from './icons/ArrowLeftIcon';
-import { TrashIcon } from './icons/TrashIcon';
-import { PencilIcon } from './icons/PencilIcon';
-import { Spinner } from './Spinner';
-import { UserIcon } from './icons/UserIcon';
-import { Cog6ToothIcon } from './icons/Cog6ToothIcon';
-import { Squares2X2Icon } from './icons/Squares2X2Icon';
+import { ArrowLeft, Trash2, Users, Settings, LayoutDashboard, Save, Check, X, Shield, AlertTriangle, Search } from 'lucide-react';
 import { DoughnutChart } from './charts/DoughnutChart';
 import { BarChart } from './charts/BarChart';
 
-
 type AdminView = 'dashboard' | 'users' | 'settings';
 
-const StatCard: React.FC<{ label: string; value: string | number; }> = ({ label, value }) => (
-    <div className="bg-light-bg border border-slate-700 p-4 rounded-lg text-center shadow-lg flex flex-col justify-center">
-        <p className="text-xs sm:text-sm text-text-secondary uppercase tracking-wider">{label}</p>
-        <p className="text-2xl sm:text-3xl font-bold font-mono mt-2 text-text-main">{value}</p>
+const StatCard: React.FC<{ label: string; value: string | number; icon: React.ReactNode }> = ({ label, value, icon }) => (
+    <div className="bg-light-bg border border-slate-700 p-6 rounded-lg shadow-lg flex items-center justify-between">
+        <div>
+            <p className="text-sm text-text-secondary uppercase tracking-wider font-semibold">{label}</p>
+            <p className="text-3xl font-bold font-mono mt-1 text-text-main">{value}</p>
+        </div>
+        <div className="p-3 bg-slate-800 rounded-full text-primary opacity-80">
+            {icon}
+        </div>
     </div>
 );
 
 const RoleBadge: React.FC<{ role: UserRole }> = ({ role }) => {
     const roleClasses = {
-        admin: 'bg-red-500/20 text-red-400',
-        premium: 'bg-yellow-500/20 text-yellow-400',
-        user: 'bg-blue-500/20 text-blue-400',
+        admin: 'bg-red-500/10 text-red-400 border border-red-500/20',
+        premium: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+        user: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
     };
     return (
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${roleClasses[role]}`}>
-            {role}
+        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${roleClasses[role]}`}>
+            {role.toUpperCase()}
         </span>
     );
 };
 
-const BottomNavItem: React.FC<{
-    icon: React.ReactNode;
-    label: string;
-    isActive: boolean;
-    onClick: () => void;
-}> = ({ icon, label, isActive, onClick }) => (
-    <button
-        onClick={onClick}
-        className={`flex flex-col items-center justify-center gap-1 w-full pt-2 pb-1 transition-colors ${
-            isActive ? 'text-primary' : 'text-text-secondary hover:text-text-main'
-        }`}
-    >
-        {React.cloneElement(icon as React.ReactElement, { className: 'w-6 h-6' })}
-        <span className="text-xs font-medium">{label}</span>
-    </button>
-);
-
-
 export const AdminPage: React.FC<{ onNavigate: (page: 'dashboard') => void }> = ({ onNavigate }) => {
     const { getAllUsers, deleteUser, updateUserRole, getAllPingResults } = useAuth();
     const { settings, updateLogoUrl, updateLandingContent, updateAnimationStyle } = useAppSettings();
-
-    const [allUsers, setAllUsers] = useState<User[]>([]);
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
-    const [adminView, setAdminView] = useState<AdminView>('dashboard');
-
-    // State for settings form
-    const [logoUrl, setLogoUrl] = useState(settings.logoUrl);
-    const [landingContent, setLandingContent] = useState<LandingPageContent>(settings.landingContent);
-    const [animationStyle, setAnimationStyle] = useState<AnimationStyle>(settings.animationStyle);
-    const [isSaving, setIsSaving] = useState(false);
-
-    useEffect(() => {
-        const users = getAllUsers();
-        setAllUsers(users);
-    }, [getAllUsers, refreshTrigger]);
+    const [currentView, setCurrentView] = useState<AdminView>('dashboard');
     
-    useEffect(() => {
-        setLogoUrl(settings.logoUrl);
-        setLandingContent(settings.landingContent);
-        setAnimationStyle(settings.animationStyle);
-    }, [settings]);
+    // Data Loading
+    const allUsers = getAllUsers();
+    const allPings = getAllPingResults();
 
+    // Analytics
     const stats = useMemo(() => {
-        const allPingResults = getAllPingResults();
-        const pingCount = allPingResults.length;
-
-        const usersByRole = allUsers.reduce((acc, user) => {
-            acc[user.role] = (acc[user.role] || 0) + 1;
-            return acc;
-        }, { admin: 0, premium: 0, user: 0 } as Record<UserRole, number>);
-
-        const siteCounts = allPingResults
-            .reduce((acc, result) => {
-                acc[result.url] = (acc[result.url] || 0) + 1;
-                return acc;
-            }, {} as Record<string, number>);
-
-        const topSites = Object.entries(siteCounts)
-            .sort((a, b) => (b[1] as number) - (a[1] as number))
-            .slice(0, 5)
-            .map(([url, count]) => ({ url, count }));
-        
-        const onlinePings = allPingResults.filter(p => p.status === 'Online').length;
-        const successRate = pingCount > 0 ? (onlinePings / pingCount) * 100 : 100;
-        
-        // Uptime is essentially the success rate of pings in this app's context
-        const averageUptime = successRate;
-
         return {
             totalUsers: allUsers.length,
-            pingCount,
-            usersByRole,
-            topSites,
-            successRate: successRate.toFixed(1) + '%',
-            averageUptime: averageUptime.toFixed(2) + '%',
+            activePings: allUsers.reduce((acc, u) => acc + u.pingedSites.length, 0),
+            totalPingEvents: allPings.length,
+            avgLatency: allPings.length > 0 
+                ? Math.round(allPings.reduce((acc, p) => acc + (p.responseTime || 0), 0) / allPings.length) + 'ms' 
+                : 'N/A'
         };
-    }, [allUsers, getAllPingResults]);
+    }, [allUsers, allPings]);
 
-    const userRoleData = useMemo(() => {
-        const roleColors: Record<UserRole, string> = {
-            admin: '#ef4444', // red-500
-            premium: '#eab308', // yellow-500
-            user: '#3b82f6', // blue-500
-        };
-        return (Object.entries(stats.usersByRole) as [UserRole, number][])
-            .filter(([, count]) => count > 0)
-            .map(([role, count]) => ({
-                label: role,
-                value: count,
-                color: roleColors[role] || '#64748b' // slate-500
-            }));
-    }, [stats.usersByRole]);
+    const roleDistribution = useMemo(() => {
+        const counts = { user: 0, premium: 0, admin: 0 };
+        allUsers.forEach(u => {
+            if (counts[u.role] !== undefined) counts[u.role]++;
+        });
+        return [
+            { label: 'Admin', value: counts.admin, color: '#ef4444' }, // Red
+            { label: 'Premium', value: counts.premium, color: '#eab308' }, // Yellow
+            { label: 'Free', value: counts.user, color: '#3b82f6' }, // Blue
+        ].filter(d => d.value > 0);
+    }, [allUsers]);
 
-    const topSitesData = useMemo(() => {
-        return stats.topSites.map(site => ({
-            label: site.url.replace(/^https?:\/\//, ''), // clean up url for display
-            value: site.count,
-        }));
-    }, [stats.topSites]);
+    const sitePopularity = useMemo(() => {
+        const counts: Record<string, number> = {};
+        allUsers.forEach(u => {
+            u.pingedSites.forEach(site => {
+                counts[site] = (counts[site] || 0) + 1;
+            });
+        });
+        return Object.entries(counts)
+            .map(([label, value]) => ({ label, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+    }, [allUsers]);
+
+    // Users View State
+    const [searchTerm, setSearchTerm] = useState('');
     
-    const handleRoleChange = (userId: string, currentRole: UserRole) => {
-        const roles: UserRole[] = ['user', 'premium']; // Admin cannot be assigned
-        const nextRoleIndex = (roles.indexOf(currentRole) + 1) % roles.length;
-        updateUserRole(userId, roles[nextRoleIndex]);
-        setRefreshTrigger(t => t + 1);
-    };
+    const filteredUsers = allUsers.filter(u => 
+        u.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        u.id.includes(searchTerm)
+    );
 
-    const handleDeleteUser = (userId: string, userEmail: string) => {
-        if(userEmail === 'admin@pynor.com') {
-            alert("Cannot delete the root admin user.");
-            return;
-        }
-        if(window.confirm(`Are you sure you want to delete user: ${userEmail}?`)) {
-            deleteUser(userId);
-            setRefreshTrigger(t => t + 1);
+    const handleDeleteUser = (id: string, email: string) => {
+        if (window.confirm(`Are you sure you want to delete user ${email}? This action cannot be undone.`)) {
+            deleteUser(id);
         }
     };
 
-    const handleSettingsSave = () => {
+    // Settings View State
+    const [localSettings, setLocalSettings] = useState(settings);
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+    const handleSaveSettings = () => {
         setIsSaving(true);
-        updateLogoUrl(logoUrl);
-        updateLandingContent(landingContent);
-        updateAnimationStyle(animationStyle);
-        setTimeout(() => setIsSaving(false), 1000); // Simulate save
+        setSaveMessage(null);
+        updateLogoUrl(localSettings.logoUrl);
+        updateLandingContent(localSettings.landingContent);
+        updateAnimationStyle(localSettings.animationStyle);
+        setTimeout(() => {
+            setIsSaving(false);
+            setSaveMessage('Settings saved successfully!');
+            setTimeout(() => setSaveMessage(null), 3000);
+        }, 800);
     };
-    
-    const handleContentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        setLandingContent(prev => ({
+
+    const handleContentChange = (key: keyof LandingPageContent, value: string) => {
+        setLocalSettings(prev => ({
             ...prev,
-            [e.target.name]: e.target.value
+            landingContent: { ...prev.landingContent, [key]: value }
         }));
-    };
-
-    const renderDashboard = () => (
-        <div className="animate-entry mt-8 space-y-8">
-            <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                <StatCard label="Total Users" value={stats.totalUsers} />
-                <StatCard label="Total Pings" value={stats.pingCount} />
-                <StatCard label="Success Rate" value={stats.successRate} />
-                <StatCard label="Avg Uptime" value={stats.averageUptime} />
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-light-bg border border-slate-700 p-6 rounded-lg min-h-[250px] flex flex-col">
-                    <h3 className="font-semibold mb-4 text-text-main text-center lg:text-left">Top Monitored Sites</h3>
-                    <div className="flex-grow flex flex-col justify-center">
-                        <BarChart data={topSitesData} />
-                    </div>
-                </div>
-                 <div className="bg-light-bg border border-slate-700 p-6 rounded-lg min-h-[250px] flex flex-col">
-                    <h3 className="font-semibold mb-4 text-text-main text-center lg:text-left">Users by Role</h3>
-                    <div className="flex-grow flex items-center justify-center">
-                        <DoughnutChart data={userRoleData} />
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-    
-    const renderUsers = () => (
-        <div className="animate-entry mt-8">
-            <h2 className="text-3xl font-bold text-text-main mb-6">Manage Users</h2>
-            <div className="bg-light-bg border border-slate-700 p-4 rounded-lg">
-                <div className="max-h-[65vh] overflow-y-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="sticky top-0 bg-light-bg">
-                            <tr>
-                                <th className="p-2 text-text-secondary font-medium">Email</th>
-                                <th className="p-2 text-text-secondary font-medium">Role</th>
-                                <th className="p-2 text-text-secondary font-medium text-center">Sites</th>
-                                <th className="p-2 text-text-secondary font-medium text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {allUsers.map(user => (
-                                <tr key={user.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                                    <td className="p-2 text-text-main truncate max-w-[150px]" title={user.email}>{user.email}</td>
-                                    <td className="p-2"><RoleBadge role={user.role} /></td>
-                                    <td className="p-2 text-text-main text-center font-mono">{user.pingedSites.length}</td>
-                                    <td className="p-2 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => handleRoleChange(user.id, user.role)} title="Change Role" className="text-slate-400 hover:text-yellow-400 disabled:opacity-50 disabled:cursor-not-allowed" disabled={user.email === 'admin@pynor.com'}>
-                                                <PencilIcon className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => handleDeleteUser(user.id, user.email)} title="Delete User" className="text-slate-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled={user.email === 'admin@pynor.com'}>
-                                                <TrashIcon className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-    
-    const renderSettings = () => (
-         <div className="animate-entry mt-8">
-             <h2 className="text-3xl font-bold text-text-main mb-6">Site Settings</h2>
-             <div className="space-y-8 max-w-4xl bg-light-bg border border-slate-700 p-8 rounded-lg">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <h3 className="text-lg font-semibold text-text-main mb-2">Site Logo</h3>
-                        <input 
-                            type="text"
-                            placeholder="Enter image URL for logo"
-                            value={logoUrl}
-                            onChange={(e) => setLogoUrl(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                    </div>
-                     <div>
-                        <h3 className="text-lg font-semibold text-text-main mb-2">UI Animation Style</h3>
-                        <select
-                            value={animationStyle}
-                            onChange={(e) => setAnimationStyle(e.target.value as AnimationStyle)}
-                            className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                            <option value="fade">Fade</option>
-                            <option value="slide">Slide</option>
-                            <option value="none">None</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <h3 className="text-lg font-semibold text-text-main mb-4">Landing Page Content</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <label className="block text-sm font-medium text-text-secondary">Hero Title
-                                <input type="text" name="heroTitle" value={landingContent.heroTitle} onChange={handleContentChange} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                            <label className="block text-sm font-medium text-text-secondary">Hero Subtitle
-                                <textarea name="heroSubtitle" value={landingContent.heroSubtitle} onChange={handleContentChange} rows={3} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                        </div>
-                        <div className="space-y-4">
-                            <label className="block text-sm font-medium text-text-secondary">Feature 1 Title
-                                <input type="text" name="feature1Title" value={landingContent.feature1Title} onChange={handleContentChange} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                            <label className="block text-sm font-medium text-text-secondary">Feature 1 Description
-                                <textarea name="feature1Description" value={landingContent.feature1Description} onChange={handleContentChange} rows={2} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                            <label className="block text-sm font-medium text-text-secondary">Feature 2 Title
-                                <input type="text" name="feature2Title" value={landingContent.feature2Title} onChange={handleContentChange} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                            <label className="block text-sm font-medium text-text-secondary">Feature 2 Description
-                                <textarea name="feature2Description" value={landingContent.feature2Description} onChange={handleContentChange} rows={2} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                            <label className="block text-sm font-medium text-text-secondary">Feature 3 Title
-                                <input type="text" name="feature3Title" value={landingContent.feature3Title} onChange={handleContentChange} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                            <label className="block text-sm font-medium text-text-secondary">Feature 3 Description
-                                <textarea name="feature3Description" value={landingContent.feature3Description} onChange={handleContentChange} rows={2} className="mt-1 w-full bg-slate-900/50 border border-slate-700 rounded-lg p-2 text-text-main"/>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex justify-end pt-4">
-                    <button
-                        onClick={handleSettingsSave}
-                        disabled={isSaving}
-                        className="bg-secondary text-slate-900 font-bold py-2 px-6 rounded-lg hover:bg-emerald-400 transition-colors disabled:bg-slate-600 w-32 flex items-center justify-center"
-                    >
-                        {isSaving ? <Spinner /> : 'Save Changes'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-
-
-    const renderContent = () => {
-        switch(adminView) {
-            case 'users': return renderUsers();
-            case 'settings': return renderSettings();
-            case 'dashboard':
-            default:
-                return renderDashboard();
-        }
     };
 
     return (
-       <>
-        <div className="min-h-screen bg-dark-bg text-text-main font-sans flex justify-center p-4 sm:p-6 lg:p-8 pb-24">
-            <div className="w-full max-w-7xl">
-                <header className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
-                    <h1 className="text-4xl font-bold text-text-main">Admin Panel</h1>
-                    <button
-                        onClick={() => onNavigate('dashboard')}
-                        className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors font-semibold self-start md:self-center"
+        <div className="min-h-screen bg-dark-bg text-text-main font-sans flex flex-col md:flex-row">
+            {/* Sidebar */}
+            <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-700 flex flex-col">
+                <div className="p-6 border-b border-slate-700 flex items-center gap-2">
+                    <Shield className="w-8 h-8 text-secondary" />
+                    <span className="text-xl font-bold tracking-tight">Pynor Admin</span>
+                </div>
+                
+                <nav className="flex-grow p-4 space-y-2">
+                    <button 
+                        onClick={() => setCurrentView('dashboard')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${currentView === 'dashboard' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
                     >
-                        <ArrowLeftIcon className="w-5 h-5" />
-                        <span>Back to Pynor</span>
+                        <LayoutDashboard className="w-5 h-5" />
+                        Dashboard
                     </button>
+                    <button 
+                        onClick={() => setCurrentView('users')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${currentView === 'users' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
+                    >
+                        <Users className="w-5 h-5" />
+                        Users
+                    </button>
+                    <button 
+                        onClick={() => setCurrentView('settings')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${currentView === 'settings' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
+                    >
+                        <Settings className="w-5 h-5" />
+                        Settings
+                    </button>
+                </nav>
+
+                <div className="p-4 border-t border-slate-700">
+                    <button 
+                        onClick={() => onNavigate('dashboard')}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-600 text-text-secondary hover:bg-slate-800 hover:text-white transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to App
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <main className="flex-grow p-4 md:p-8 overflow-y-auto max-h-screen">
+                <header className="mb-8">
+                    <h1 className="text-3xl font-bold capitalize">{currentView}</h1>
+                    <p className="text-text-secondary mt-1">Manage your application and view statistics.</p>
                 </header>
 
-                <main>
-                    {renderContent()}
-                </main>
-            </div>
+                {currentView === 'dashboard' && (
+                    <div className="space-y-8 animate-entry">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <StatCard label="Total Users" value={stats.totalUsers} icon={<Users className="w-6 h-6" />} />
+                            <StatCard label="Active Monitors" value={stats.activePings} icon={<Check className="w-6 h-6" />} />
+                            <StatCard label="Ping Events" value={stats.totalPingEvents} icon={<LayoutDashboard className="w-6 h-6" />} />
+                            <StatCard label="Avg Latency" value={stats.avgLatency} icon={<Settings className="w-6 h-6" />} />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div className="bg-light-bg border border-slate-700 rounded-lg p-6 shadow-lg">
+                                <h3 className="text-lg font-semibold mb-6">User Distribution</h3>
+                                <DoughnutChart data={roleDistribution} />
+                            </div>
+                            <div className="bg-light-bg border border-slate-700 rounded-lg p-6 shadow-lg">
+                                <h3 className="text-lg font-semibold mb-6">Most Monitored Sites</h3>
+                                <BarChart data={sitePopularity} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {currentView === 'users' && (
+                    <div className="bg-light-bg border border-slate-700 rounded-lg shadow-lg overflow-hidden animate-entry">
+                        <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="relative w-full sm:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                <input 
+                                    type="text" 
+                                    placeholder="Search users..." 
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-md py-2 pl-9 pr-4 text-sm text-text-main focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                            </div>
+                            <span className="text-sm text-text-secondary">{filteredUsers.length} users found</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-900/50 text-text-secondary text-xs uppercase tracking-wider">
+                                        <th className="p-4 font-medium">User</th>
+                                        <th className="p-4 font-medium">Role</th>
+                                        <th className="p-4 font-medium">Sites Monitored</th>
+                                        <th className="p-4 font-medium">Joined</th>
+                                        <th className="p-4 font-medium text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700">
+                                    {filteredUsers.map(u => (
+                                        <tr key={u.id} className="hover:bg-slate-800/30 transition-colors">
+                                            <td className="p-4">
+                                                <div className="font-medium text-text-main">{u.email}</div>
+                                                <div className="text-xs text-text-secondary font-mono">{u.id}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <RoleBadge role={u.role} />
+                                                    {u.role !== 'admin' && (
+                                                        <select 
+                                                            value={u.role}
+                                                            onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
+                                                            className="bg-transparent text-xs border-b border-dashed border-slate-500 text-text-secondary focus:outline-none focus:text-primary focus:border-primary"
+                                                        >
+                                                            <option value="user">User</option>
+                                                            <option value="premium">Premium</option>
+                                                            <option value="admin">Admin</option>
+                                                        </select>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-text-secondary">{u.pingedSites.length}</td>
+                                            <td className="p-4 text-text-secondary text-sm">{new Date(u.createdAt).toLocaleDateString()}</td>
+                                            <td className="p-4 text-right">
+                                                {u.role !== 'admin' && (
+                                                    <button 
+                                                        onClick={() => handleDeleteUser(u.id, u.email)}
+                                                        className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                                                        title="Delete User"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredUsers.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center text-text-secondary">
+                                                No users found matching "{searchTerm}"
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {currentView === 'settings' && (
+                    <div className="space-y-6 animate-entry">
+                        <div className="bg-light-bg border border-slate-700 rounded-lg p-6 shadow-lg">
+                            <h3 className="text-lg font-semibold mb-4 border-b border-slate-700 pb-2">General Appearance</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary mb-2">Logo URL</label>
+                                    <input 
+                                        type="text" 
+                                        value={localSettings.logoUrl}
+                                        onChange={(e) => setLocalSettings(prev => ({ ...prev, logoUrl: e.target.value }))}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-md p-2.5 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                        placeholder="https://example.com/logo.png"
+                                    />
+                                    <p className="text-xs text-text-secondary mt-1">Leave empty to use default text logo.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-text-secondary mb-2">Animation Style</label>
+                                    <select 
+                                        value={localSettings.animationStyle}
+                                        onChange={(e) => setLocalSettings(prev => ({ ...prev, animationStyle: e.target.value as AnimationStyle }))}
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-md p-2.5 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                    >
+                                        <option value="fade">Fade In</option>
+                                        <option value="slide">Slide Up</option>
+                                        <option value="none">None (Performance)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-light-bg border border-slate-700 rounded-lg p-6 shadow-lg">
+                            <h3 className="text-lg font-semibold mb-4 border-b border-slate-700 pb-2">Landing Page Content</h3>
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs uppercase text-text-secondary mb-1">Hero Title</label>
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.heroTitle}
+                                            onChange={(e) => handleContentChange('heroTitle', e.target.value)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-text-secondary mb-1">Hero Subtitle</label>
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.heroSubtitle}
+                                            onChange={(e) => handleContentChange('heroSubtitle', e.target.value)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-slate-700 pt-4 mt-4">
+                                    <p className="text-sm font-medium text-text-secondary mb-3">Feature 1</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.feature1Title}
+                                            onChange={(e) => handleContentChange('feature1Title', e.target.value)}
+                                            className="bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                            placeholder="Title"
+                                        />
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.feature1Description}
+                                            onChange={(e) => handleContentChange('feature1Description', e.target.value)}
+                                            className="md:col-span-2 bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                            placeholder="Description"
+                                        />
+                                    </div>
+                                </div>
+                                
+                                <div className="border-t border-slate-700 pt-4">
+                                    <p className="text-sm font-medium text-text-secondary mb-3">Feature 2</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.feature2Title}
+                                            onChange={(e) => handleContentChange('feature2Title', e.target.value)}
+                                            className="bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                            placeholder="Title"
+                                        />
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.feature2Description}
+                                            onChange={(e) => handleContentChange('feature2Description', e.target.value)}
+                                            className="md:col-span-2 bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                            placeholder="Description"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-slate-700 pt-4">
+                                    <p className="text-sm font-medium text-text-secondary mb-3">Feature 3</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.feature3Title}
+                                            onChange={(e) => handleContentChange('feature3Title', e.target.value)}
+                                            className="bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                            placeholder="Title"
+                                        />
+                                        <input 
+                                            type="text"
+                                            value={localSettings.landingContent.feature3Description}
+                                            onChange={(e) => handleContentChange('feature3Description', e.target.value)}
+                                            className="md:col-span-2 bg-slate-900 border border-slate-700 rounded-md p-2 text-text-main focus:ring-1 focus:ring-primary focus:outline-none"
+                                            placeholder="Description"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-4">
+                            {saveMessage && (
+                                <span className="text-secondary text-sm animate-fade-in flex items-center gap-1">
+                                    <Check className="w-4 h-4" /> {saveMessage}
+                                </span>
+                            )}
+                            <button
+                                onClick={handleSaveSettings}
+                                disabled={isSaving}
+                                className="flex items-center gap-2 bg-primary text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                            >
+                                {isSaving ? <span className="animate-spin">⌛</span> : <Save className="w-5 h-5" />}
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
-        <nav className="fixed bottom-0 left-0 right-0 bg-light-bg border-t border-slate-700 shadow-t-lg flex justify-around z-50">
-            <BottomNavItem 
-                icon={<Squares2X2Icon />}
-                label="Dashboard"
-                isActive={adminView === 'dashboard'}
-                onClick={() => setAdminView('dashboard')}
-            />
-            <BottomNavItem 
-                icon={<UserIcon />}
-                label="Users"
-                isActive={adminView === 'users'}
-                onClick={() => setAdminView('users')}
-            />
-            <BottomNavItem 
-                icon={<Cog6ToothIcon />}
-                label="Settings"
-                isActive={adminView === 'settings'}
-                onClick={() => setAdminView('settings')}
-            />
-        </nav>
-      </>
     );
 };

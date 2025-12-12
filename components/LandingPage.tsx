@@ -1,10 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ClockIcon } from './icons/ClockIcon';
-import { ChartBarIcon } from './icons/ChartBarIcon';
-import { SparklesIcon } from './icons/SparklesIcon';
+import { Clock, BarChart3, Sparkles, ShieldCheck } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAppSettings } from '../hooks/useAppSettings';
-import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
 
 interface LandingPageProps {
   onLoginClick: () => void;
@@ -77,7 +74,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onGetSta
             className="p-2 rounded-full text-text-secondary hover:text-secondary hover:bg-light-bg/50 transition-colors"
             title="Temp Admin Access"
           >
-            <ShieldCheckIcon className="w-6 h-6" />
+            <ShieldCheck className="w-6 h-6" />
           </button>
           <button onClick={onLoginClick} className="font-semibold text-text-secondary hover:text-text-main transition-colors">
             Login
@@ -109,13 +106,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onGetSta
         <section ref={featuresRef} id="features" className="py-20 md:py-24 w-full max-w-7xl mx-auto">
             <h2 className={`text-4xl font-bold tracking-tighter mb-12 transition-all duration-700 ${featuresAreVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>Why Choose Pynor?</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               <Feature icon={<ClockIcon className="w-8 h-8"/>} title={content.feature1Title} isVisible={featuresAreVisible} delay="100ms">
+               <Feature icon={<Clock className="w-8 h-8"/>} title={content.feature1Title} isVisible={featuresAreVisible} delay="100ms">
                     {content.feature1Description}
                 </Feature>
-                <Feature icon={<ChartBarIcon className="w-8 h-8"/>} title={content.feature2Title} isVisible={featuresAreVisible} delay="300ms">
+                <Feature icon={<BarChart3 className="w-8 h-8"/>} title={content.feature2Title} isVisible={featuresAreVisible} delay="300ms">
                     {content.feature2Description}
                 </Feature>
-                <Feature icon={<SparklesIcon className="w-8 h-8"/>} title={content.feature3Title} isVisible={featuresAreVisible} delay="500ms">
+                <Feature icon={<Sparkles className="w-8 h-8"/>} title={content.feature3Title} isVisible={featuresAreVisible} delay="500ms">
                     {content.feature3Description}
                 </Feature>
             </div>

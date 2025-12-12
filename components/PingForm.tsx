@@ -1,6 +1,5 @@
 import React from 'react';
-import { GlobeAltIcon } from './icons/GlobeAltIcon';
-import { PaperAirplaneIcon } from './icons/PaperAirplaneIcon';
+import { Globe, Send } from 'lucide-react';
 import { Spinner } from './Spinner';
 
 interface PingFormProps {
@@ -16,7 +15,7 @@ export const PingForm: React.FC<PingFormProps> = ({ url, setUrl, handleSubmit, i
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto">
       <div className={`flex items-center gap-2 bg-light-bg border border-slate-700 rounded-lg p-2 shadow-lg transition-all duration-300 ${isDisabled ? 'opacity-60' : 'focus-within:ring-2 focus-within:ring-primary'}`}>
-        <GlobeAltIcon className="w-6 h-6 text-text-secondary ml-2" />
+        <Globe className="w-6 h-6 text-text-secondary ml-2" />
         <input
           type="text"
           value={url}
@@ -38,7 +37,7 @@ export const PingForm: React.FC<PingFormProps> = ({ url, setUrl, handleSubmit, i
             </>
           ) : (
             <>
-              <PaperAirplaneIcon className="w-5 h-5" />
+              <Send className="w-5 h-5" />
               <span>Ping</span>
             </>
           )}

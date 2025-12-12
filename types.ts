@@ -33,9 +33,11 @@ export interface LandingPageContent {
 }
 
 export type AnimationStyle = 'fade' | 'slide' | 'none';
+export type AppTheme = 'cyber' | 'classic';
 
 export interface AppSettings {
   logoUrl: string;
   landingContent: LandingPageContent;
   animationStyle: AnimationStyle;
+  theme: AppTheme;
 }

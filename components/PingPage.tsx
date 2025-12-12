@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useAppSettings } from '../hooks/useAppSettings';
 import type { PingResult } from '../types';
 import { PingForm } from './PingForm';
 import { SiteListCard } from './SiteListCard';
 import { SiteDetailView } from './SiteDetailView';
-import { ArrowRightOnRectangleIcon } from './icons/ArrowRightOnRectangleIcon';
-import { ShieldCheckIcon } from './icons/ShieldCheckIcon';
+import { LogOut, ShieldCheck, Sun, Moon } from 'lucide-react';
 import { Logo } from './Logo';
 
 const USER_LIMIT = 5;
@@ -17,6 +17,7 @@ interface PingPageProps {
 
 export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
     const { user, logout, updateUserPings, removeUserPing, savePingResult } = useAuth();
+    const { settings, toggleTheme } = useAppSettings();
     const [url, setUrl] = useState('');
     const [groupedResults, setGroupedResults] = useState<Record<string, PingResult[]>>({});
     const [isPinging, setIsPinging] = useState(false);
@@ -61,7 +62,7 @@ export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
                 responseTime: responseTime,
                 timestamp: new Date(),
                 statusCode: null, // Cannot be determined with no-cors
-                statusText: 'Response received (status unknown due to CORS)',
+                statusText: 'Response received',
             };
             
             if(!user.pingedSites.includes(formattedUrl)) {
@@ -136,30 +137,37 @@ export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
 
     return (
        <>
-        <div className="min-h-screen bg-dark-bg text-text-main font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen bg-dark-bg text-text-main font-sans flex flex-col items-center p-4 sm:p-6 lg:p-8 transition-colors duration-300">
             <header className="w-full max-w-7xl mx-auto flex justify-between items-center mb-8">
                  <div className="flex items-center gap-2">
                     <Logo />
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-text-secondary hidden sm:inline">{user?.email}</span>
+                    <button 
+                        onClick={toggleTheme}
+                        className="p-2 text-text-secondary hover:text-primary transition-colors"
+                        title={settings.theme === 'cyber' ? 'Switch to Classic' : 'Switch to Cyber'}
+                    >
+                        {settings.theme === 'cyber' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                    </button>
+                    <span className="text-text-secondary hidden sm:inline font-mono text-sm border-r border-slate-700 pr-4">{user?.email}</span>
                     {user?.role === 'admin' && (
                          <button
                             onClick={() => onNavigate('admin')}
                             className="flex items-center gap-2 text-text-secondary hover:text-secondary transition-colors"
                             title="Admin Panel"
                         >
-                            <ShieldCheckIcon className="w-6 h-6" />
-                            <span className="hidden md:inline">Admin</span>
+                            <ShieldCheck className="w-5 h-5" />
+                            <span className="hidden md:inline uppercase text-xs font-bold tracking-wider">Admin</span>
                         </button>
                     )}
                      <button
                         onClick={logout}
-                        className="flex items-center gap-2 text-text-secondary hover:text-primary transition-colors"
+                        className="flex items-center gap-2 text-text-secondary hover:text-red-500 transition-colors"
                         title="Logout"
                     >
-                        <ArrowRightOnRectangleIcon className="w-6 h-6" />
-                         <span className="hidden md:inline">Logout</span>
+                        <LogOut className="w-5 h-5" />
+                         <span className="hidden md:inline uppercase text-xs font-bold tracking-wider">Logout</span>
                     </button>
                 </div>
             </header>
@@ -190,10 +198,10 @@ export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
                             results={groupedResults[selectedSite] || []}
                         />
                     ) : (
-                        <div className="bg-light-bg border border-slate-700 rounded-lg p-8 h-full flex flex-col justify-center items-center text-center">
-                            <h2 className="text-2xl font-semibold text-text-main">Welcome to Pynor</h2>
+                        <div className="bg-light-bg border border-slate-700/50 rounded-lg p-8 h-full flex flex-col justify-center items-center text-center shadow-[0_0_15px_rgba(0,0,0,0.3)]">
+                            <h2 className="text-2xl font-bold text-text-main tracking-tight uppercase">Ready to Monitor</h2>
                             <p className="text-text-secondary mt-2 max-w-md">
-                                Select a site from the list to view its statistics and history, or enter a new URL above to start pinging.
+                                Select a site from the list to view live statistics or input a new URL above to initiate a ping sequence.
                             </p>
                         </div>
                     )}
