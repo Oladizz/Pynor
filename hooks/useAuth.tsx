@@ -7,6 +7,7 @@ import {
     onAuthStateChanged,
     User as FirebaseAuthUser,
 } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs, deleteDoc, updateDoc, addDoc } from 'firebase/firestore'; // Added addDoc
 import type { User, UserRole, PingResult, PingSite, PingFrequency } from '../types'; // Import PingSite and PingFrequency
 
@@ -211,17 +212,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [user]);
 
     const deleteUser = useCallback(async (userId: string) => {
-        await deleteDoc(doc(db, 'users', userId));
-        // Note: Deleting a user from Firestore does not delete the Firebase Authentication user.
-        // That would typically be handled server-side or by an admin.
+        try {
+            const functions = getFunctions();
+            const deleteUserFunc = httpsCallable(functions, 'deleteUser');
+            await deleteUserFunc({ userId });
+        } catch (error: any) {
+            console.error("Error deleting user:", error);
+            throw error;
+        }
     }, []);
 
     const updateUserRole = useCallback(async (userId: string, newRole: UserRole) => {
-        const userDocRef = doc(db, 'users', userId);
-        await updateDoc(userDocRef, { role: newRole });
-        // If the current user's role is updated, refresh their state
-        if (user?.id === userId) {
-            setUser((prevUser) => prevUser ? { ...prevUser, role: newRole } : null);
+        try {
+            const functions = getFunctions();
+            const setUserRoleFunc = httpsCallable(functions, 'setUserRole');
+            await setUserRoleFunc({ userId, newRole });
+
+            // To get the new custom claim, the user's ID token must be refreshed.
+            if (auth.currentUser && auth.currentUser.uid === userId) {
+                await auth.currentUser.getIdToken(true);
+            }
+            
+            // Also update the local user state if it's the current user
+            if (user?.id === userId) {
+                setUser((prevUser) => prevUser ? { ...prevUser, role: newRole } : null);
+            }
+        } catch (error: any) {
+            console.error("Error updating user role:", error);
+            // Optionally re-throw or handle the error in the UI
+            throw error;
         }
     }, [user]);
 

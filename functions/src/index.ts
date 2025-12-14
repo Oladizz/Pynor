@@ -11,6 +11,8 @@ import {setGlobalOptions} from "firebase-functions";
 
 export {ping} from "./ping";
 export {schedulePings} from "./schedulePings";
+export {setUserRole} from "./setUserRole";
+export {deleteUser} from "./deleteUser";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript

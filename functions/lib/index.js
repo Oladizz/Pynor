@@ -8,12 +8,16 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.schedulePings = exports.ping = void 0;
+exports.deleteUser = exports.setUserRole = exports.schedulePings = exports.ping = void 0;
 const firebase_functions_1 = require("firebase-functions");
 var ping_1 = require("./ping");
 Object.defineProperty(exports, "ping", { enumerable: true, get: function () { return ping_1.ping; } });
 var schedulePings_1 = require("./schedulePings");
 Object.defineProperty(exports, "schedulePings", { enumerable: true, get: function () { return schedulePings_1.schedulePings; } });
+var setUserRole_1 = require("./setUserRole");
+Object.defineProperty(exports, "setUserRole", { enumerable: true, get: function () { return setUserRole_1.setUserRole; } });
+var deleteUser_1 = require("./deleteUser");
+Object.defineProperty(exports, "deleteUser", { enumerable: true, get: function () { return deleteUser_1.deleteUser; } });
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
 // For cost control, you can set the maximum number of containers that can be

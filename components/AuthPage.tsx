@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { auth, db } from '../src/firebase';
+import {
+    GoogleAuthProvider,
+    GithubAuthProvider,
+    signInWithPopup,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { LandingPage } from './LandingPage';
 import { Logo } from './Logo';
 import { 
-    Mail, Lock, User, ArrowRight, Check, AlertCircle, 
+    Mail, Lock, User as UserIcon, ArrowRight, Check, AlertCircle, 
     Building2, KeyRound, ShieldCheck, ArrowLeft, Globe, 
-    Github, Command 
+    Github, Command, Chrome
 } from 'lucide-react';
 import { Spinner } from './Spinner';
+import type { User } from '../types';
 
 type AuthView = 'landing' | 'login' | 'signup' | 'forgot-password' | 'sso';
 
@@ -170,6 +178,36 @@ export const AuthPage: React.FC = () => {
             }
         }, 1500);
     };
+
+    const handleSocialLogin = async (provider: 'google' | 'github') => {
+        const authProvider = provider === 'google' ? new GoogleAuthProvider() : new GithubAuthProvider();
+        setIsLoading(true);
+        setError(null);
+        try {
+            const result = await signInWithPopup(auth, authProvider);
+            const firebaseUser = result.user;
+
+            // Check if user exists in Firestore, if not, create them
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+                const newAppUser: User = {
+                    id: firebaseUser.uid,
+                    email: firebaseUser.email || '',
+                    role: 'user',
+                    pingedSites: [],
+                    createdAt: new Date().toISOString(),
+                };
+                await setDoc(userDocRef, newAppUser);
+            }
+            // The onAuthStateChanged listener in useAuth will handle setting the user state
+        } catch (error: any) {
+            setError(error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
     
     // Shared Components for the Auth Layout
     const LeftPanel = () => (
@@ -225,12 +263,12 @@ export const AuthPage: React.FC = () => {
 
     const SocialButtons = () => (
         <div className="grid grid-cols-2 gap-4 mb-6">
-            <button type="button" onClick={() => alert('Social Login Demo')} className="flex items-center justify-center gap-2 p-2.5 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors text-text-main">
+            <button type="button" onClick={() => handleSocialLogin('github')} className="flex items-center justify-center gap-2 p-2.5 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors text-text-main">
                 <Github className="w-5 h-5" />
                 <span className="text-sm font-medium">GitHub</span>
             </button>
-            <button type="button" onClick={() => alert('Social Login Demo')} className="flex items-center justify-center gap-2 p-2.5 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors text-text-main">
-                <Command className="w-5 h-5" />
+            <button type="button" onClick={() => handleSocialLogin('google')} className="flex items-center justify-center gap-2 p-2.5 border border-slate-700 rounded-lg hover:bg-slate-800 transition-colors text-text-main">
+                <Chrome className="w-5 h-5" />
                 <span className="text-sm font-medium">Google</span>
             </button>
         </div>
@@ -349,7 +387,7 @@ export const AuthPage: React.FC = () => {
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-text-secondary uppercase tracking-wider ml-1">Full Name</label>
                                     <div className="relative">
-                                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                                         <input 
                                             type="text" 
                                             required 
