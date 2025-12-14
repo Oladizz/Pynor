@@ -163,13 +163,7 @@ export const PingPage: React.FC<PingPageProps> = ({ onNavigateToAdmin, onNavigat
                     <Logo />
                 </div>
                 <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => user && updateUserRole(user.id, 'admin')}
-                        className="bg-yellow-500 text-black font-bold text-xs p-2 rounded"
-                        title="Make me an admin"
-                    >
-                        Make Admin
-                    </button>
+
                     <button 
                         onClick={toggleTheme}
                         className="p-2 text-text-secondary hover:text-primary transition-colors"
