@@ -118,9 +118,9 @@
   <script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@17.0.2/",
+    "react/": "https://aistudiocdn.com/react@17.0.2/",
+    "react": "https://aistudiocdn.com/react@17.0.2",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
     "lucide-react": "https://esm.sh/lucide-react@0.378.0?external=react,react-dom"
   }
@@ -130,5 +130,13 @@
   <body class="bg-dark-bg theme-cyber"> <!-- Default class -->
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+      if (window.location.search.includes('eruda=true')) {
+        let script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+        script.onload = function () { eruda.init(); };
+        document.body.appendChild(script);
+      }
+    </script>
   </body>
 </html>

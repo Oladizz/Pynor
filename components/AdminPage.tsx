@@ -33,7 +33,7 @@ const RoleBadge: React.FC<{ role: UserRole }> = ({ role }) => {
     );
 };
 
-export const AdminPage: React.FC<{ onNavigate: (page: 'dashboard') => void }> = ({ onNavigate }) => {
+export const AdminPage: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) => {
     const { getAllUsers, deleteUser, updateUserRole, getAllPingResults } = useAuth();
     const { settings, updateLogoUrl, updateLandingContent, updateAnimationStyle } = useAppSettings();
     const [currentView, setCurrentView] = useState<AdminView>('dashboard');
@@ -153,7 +153,7 @@ export const AdminPage: React.FC<{ onNavigate: (page: 'dashboard') => void }> = 
 
                 <div className="p-4 border-t border-slate-700">
                     <button 
-                        onClick={() => onNavigate('dashboard')}
+                        onClick={onNavigate}
                         className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-600 text-text-secondary hover:bg-slate-800 hover:text-white transition-colors"
                     >
                         <ArrowLeft className="w-4 h-4" />

@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Clock, BarChart3, Sparkles, ShieldCheck } from 'lucide-react';
+import { Clock, BarChart3, Sparkles } from 'lucide-react';
 import { Logo } from './Logo';
 import { useAppSettings } from '../hooks/useAppSettings';
 
 interface LandingPageProps {
   onLoginClick: () => void;
   onGetStartedClick: () => void;
-  onAdminClick: () => void;
 }
 
 const Feature: React.FC<{ icon: React.ReactNode, title: string, children: React.ReactNode, delay: string, isVisible: boolean }> = ({ icon, title, children, delay, isVisible }) => (
@@ -53,7 +52,7 @@ const useOnScreen = (options: IntersectionObserverInit) => {
 };
 
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onGetStartedClick, onAdminClick }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onGetStartedClick }) => {
   const { settings } = useAppSettings();
   const { landingContent: content } = settings;
 
@@ -62,20 +61,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onGetSta
 
 
   return (
-    <>
     <div className="min-h-screen bg-dark-bg text-text-main font-sans w-full overflow-x-hidden">
       <nav className="p-4 sm:p-6 lg:p-8 w-full max-w-7xl mx-auto flex justify-between items-center">
         <div className="flex items-center gap-2">
             <Logo />
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
-           <button 
-            onClick={onAdminClick} 
-            className="p-2 rounded-full text-text-secondary hover:text-secondary hover:bg-light-bg/50 transition-colors"
-            title="Temp Admin Access"
-          >
-            <ShieldCheck className="w-6 h-6" />
-          </button>
           <button onClick={onLoginClick} className="font-semibold text-text-secondary hover:text-text-main transition-colors">
             Login
           </button>
@@ -151,6 +142,5 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onGetSta
           </p>
       </footer>
     </div>
-    </>
   );
 };

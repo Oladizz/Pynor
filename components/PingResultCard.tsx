@@ -19,7 +19,7 @@ const StatusIndicator: React.FC<{ status: PingResult['status'] }> = ({ status })
 
 export const PingResultCard: React.FC<PingResultCardProps> = ({ result }) => {
   return (
-    <div className="bg-light-bg border border-slate-700 rounded-lg p-4 shadow-md w-full animate-entry">
+    <div className="bg-light-bg border border-slate-700 rounded-lg p-4 shadow-md w-full">
       <div className="flex justify-between items-start gap-4">
         <div className="flex-grow overflow-hidden">
           <p className="text-lg font-semibold text-text-main truncate" title={result.url}>

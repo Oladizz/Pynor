@@ -2,10 +2,12 @@ import React, { useMemo, useState } from 'react';
 import type { PingResult } from '../types';
 import { PingResultCard } from './PingResultCard';
 import { PingChatView } from './PingChatView';
+import { Spinner } from './Spinner';
 
 interface SiteDetailViewProps {
     siteUrl: string;
     results: PingResult[];
+    isLoading: boolean;
 }
 
 const StatCard: React.FC<{ label: string; value: string; className?: string }> = ({ label, value, className = '' }) => (
@@ -15,7 +17,7 @@ const StatCard: React.FC<{ label: string; value: string; className?: string }> =
     </div>
 );
 
-export const SiteDetailView: React.FC<SiteDetailViewProps> = ({ siteUrl, results }) => {
+export const SiteDetailView: React.FC<SiteDetailViewProps> = ({ siteUrl, results, isLoading }) => {
     const [activeTab, setActiveTab] = useState<'history' | 'ai'>('history');
 
     const stats = useMemo(() => {
@@ -77,7 +79,12 @@ export const SiteDetailView: React.FC<SiteDetailViewProps> = ({ siteUrl, results
             <div className="p-4">
                 {activeTab === 'history' ? (
                     <div className="flex flex-col gap-4 max-h-[45vh] overflow-y-auto pr-2">
-                        {results.length > 0 ? results.map(result => (
+                        {isLoading && results.length === 0 ? (
+                            <div className="flex justify-center items-center py-8">
+                                <Spinner className="w-8 h-8" />
+                                <p className="ml-4 text-text-secondary">Fetching history...</p>
+                            </div>
+                        ) : results.length > 0 ? results.map(result => (
                             <PingResultCard key={result.id} result={result} />
                         )) : (
                            <p className="text-center text-text-secondary py-8">No ping history for this site yet.</p>

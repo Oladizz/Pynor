@@ -1,139 +1,159 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useAppSettings } from '../hooks/useAppSettings';
-import type { PingResult } from '../types';
+import type { PingResult, PingSite, PingFrequency } from '../types';
 import { PingForm } from './PingForm';
 import { SiteListCard } from './SiteListCard';
-import { SiteDetailView } from './SiteDetailView';
 import { LogOut, ShieldCheck, Sun, Moon } from 'lucide-react';
 import { Logo } from './Logo';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../src/firebase';
+import { PingScheduleModal } from './PingScheduleModal';
 
 const USER_LIMIT = 5;
 const PREMIUM_LIMIT = 20;
 
 interface PingPageProps {
-    onNavigate: (page: 'admin') => void;
+    onNavigateToAdmin: () => void;
+    onNavigateToSite: (siteUrl: string) => void;
 }
 
-export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
-    const { user, logout, updateUserPings, removeUserPing, savePingResult } = useAuth();
+export const PingPage: React.FC<PingPageProps> = ({ onNavigateToAdmin, onNavigateToSite }) => {
+    const { user, logout, updateUserPings, removeUserPing, savePingResult, updateUserRole } = useAuth();
     const { settings, toggleTheme } = useAppSettings();
     const [url, setUrl] = useState('');
-    const [groupedResults, setGroupedResults] = useState<Record<string, PingResult[]>>({});
     const [isPinging, setIsPinging] = useState(false);
-    const [selectedSite, setSelectedSite] = useState<string | null>(null);
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [urlToSchedule, setUrlToSchedule] = useState<string | null>(null);
+    const [latestResults, setLatestResults] = useState<Record<string, PingResult>>({});
 
-
-    // Sync initial sites from user profile
+    // Effect to get the latest ping result for each site for the status dot
     useEffect(() => {
-        if (user?.pingedSites.length && Object.keys(groupedResults).length === 0) {
-            const initialGroup: Record<string, PingResult[]> = {};
-            user.pingedSites.forEach(site => {
-                initialGroup[site] = [];
+        if (!user || user.pingedSites.length === 0) {
+            setLatestResults({});
+            return;
+        }
+
+        const siteUrls = user.pingedSites.map(s => s.url);
+        const q = query(
+            collection(db, 'ping_results'),
+            where("userId", "==", user.id),
+            where("url", "in", siteUrls)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const resultsByUrl: Record<string, PingResult> = {};
+            snapshot.forEach(doc => {
+                const result = {
+                    ...doc.data(),
+                    id: doc.id,
+                    timestamp: (doc.data().timestamp && doc.data().timestamp.toDate) ? doc.data().timestamp.toDate() : new Date(),
+                } as PingResult;
+
+                // If we don't have a result for this URL yet, or if the current one is newer, update it
+                if (!resultsByUrl[result.url] || resultsByUrl[result.url].timestamp < result.timestamp) {
+                    resultsByUrl[result.url] = result;
+                }
             });
-            setGroupedResults(initialGroup);
-        }
-    }, [user, groupedResults]);
-
-
-    const handlePing = useCallback(async (targetUrl: string) => {
-        if (!user) return;
-
-        let formattedUrl = targetUrl;
-        if (!/^https?:\/\//i.test(formattedUrl)) {
-            formattedUrl = `https://` + formattedUrl;
-        }
-
-        setIsPinging(true);
-        const startTime = Date.now();
-        let result: PingResult;
-
-        try {
-            // Using 'no-cors' allows the request but we can't inspect the response.
-            // A successful fetch means the server is reachable.
-            await fetch(formattedUrl, { mode: 'no-cors', cache: 'no-cache' });
-            
-            const responseTime = Date.now() - startTime;
-
-            result = {
-                id: crypto.randomUUID(),
-                url: formattedUrl,
-                status: 'Online',
-                responseTime: responseTime,
-                timestamp: new Date(),
-                statusCode: null, // Cannot be determined with no-cors
-                statusText: 'Response received',
-            };
-            
-            if(!user.pingedSites.includes(formattedUrl)) {
-              updateUserPings(user.id, formattedUrl);
-            }
-
-        } catch (error) {
-            const responseTime = Date.now() - startTime;
-            result = {
-                id: crypto.randomUUID(),
-                url: formattedUrl,
-                status: 'Error',
-                responseTime,
-                timestamp: new Date(),
-                statusCode: null,
-                statusText: 'Network error or DNS failure.',
-            };
-        }
-
-        savePingResult(result);
-
-        setGroupedResults(prev => ({
-            ...prev,
-            [formattedUrl]: [result, ...(prev[formattedUrl] || [])]
-        }));
-        setSelectedSite(formattedUrl);
-        setIsPinging(false);
-    }, [user, updateUserPings, savePingResult]);
-    
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (url.trim() && !isPinging) {
-            handlePing(url.trim());
-        }
-    };
-
-    const handleSiteSelect = (siteUrl: string) => {
-        setSelectedSite(siteUrl);
-        setUrl(siteUrl);
-    };
-
-    const handleRemoveSite = (siteUrl: string) => {
-        if (!user) return;
-        
-        removeUserPing(user.id, siteUrl);
-
-        setGroupedResults(prev => {
-            const newResults = { ...prev };
-            delete newResults[siteUrl];
-            return newResults;
+            setLatestResults(resultsByUrl);
         });
 
-        if (selectedSite === siteUrl) {
-            setSelectedSite(null);
+        return () => unsubscribe();
+    }, [user]);
+
+    const functions = getFunctions();
+    const callPingFunction = httpsCallable(functions, 'ping');
+
+    const handlePing = useCallback(async (newPingSite: PingSite, isNewSite: boolean) => {
+        if (!user) return;
+
+        const targetUrl = newPingSite.url;
+        setIsPinging(true);
+
+        try {
+            const response = await callPingFunction({ url: targetUrl });
+            const data = response.data as PingResult;
+
+            const result: PingResult = {
+                id: data.id,
+                url: data.url,
+                status: data.status,
+                responseTime: data.responseTime,
+                timestamp: new Date(data.timestamp),
+                statusCode: data.statusCode,
+                statusText: data.statusText,
+            };
+
+            await updateUserPings(user.id, newPingSite);
+            await savePingResult(result);
+            
+            if (isNewSite) {
+              onNavigateToSite(targetUrl);
+            }
+
+        } catch (error: any) {
+            console.error("Error pinging URL via Firebase Function:", error);
+            const errorResult: PingResult = {
+                id: crypto.randomUUID(),
+                url: targetUrl,
+                status: 'Error',
+                responseTime: null,
+                timestamp: new Date(),
+                statusCode: null,
+                statusText: error.message || 'Unknown error during ping.',
+            };
+            await savePingResult(errorResult);
+            if (isNewSite) {
+              await updateUserPings(user.id, newPingSite);
+              onNavigateToSite(targetUrl);
+            }
+        } finally {
+            setIsPinging(false);
             setUrl('');
         }
-    };
+    }, [user, updateUserPings, savePingResult, callPingFunction, onNavigateToSite]);
+
+    const handleInitialPingSubmit = useCallback((submittedUrl: string) => {
+        if (!user) return;
+
+        const existingSite = user.pingedSites.find(site => site.url === submittedUrl);
+
+        if (existingSite) {
+            handlePing(existingSite, false);
+        } else {
+            setUrlToSchedule(submittedUrl);
+            setShowScheduleModal(true);
+        }
+    }, [user, handlePing]);
+
+    const handleSaveSchedule = useCallback((frequency: PingFrequency) => {
+        if (urlToSchedule && user) {
+            const newPingSite: PingSite = { url: urlToSchedule, frequency };
+            handlePing(newPingSite, true);
+            setUrlToSchedule(null);
+            setShowScheduleModal(false);
+        }
+    }, [urlToSchedule, user, handlePing]);
+
+    const handleRemoveSite = useCallback(async (siteToRemoveUrl: string) => {
+        if (!user) return;
+        await removeUserPing(user.id, siteToRemoveUrl);
+    }, [user, removeUserPing]);
 
     const disabledReason = useMemo(() => {
         if (!user) return "You must be logged in.";
-        const isExistingSite = user.pingedSites.includes(url) || user.pingedSites.includes(`https://${url}`);
-        if (user.role === 'user' && !isExistingSite && user.pingedSites.length >= USER_LIMIT) {
+        const isExistingSite = user.pingedSites.some(site => site.url === url || site.url === `https://${url}`);
+        const uniqueSitesCount = user.pingedSites.length;
+
+        if (user.role === 'user' && !isExistingSite && uniqueSitesCount >= USER_LIMIT) {
             return `Free users can only track ${USER_LIMIT} unique sites.`;
         }
-        if (user.role === 'premium' && !isExistingSite && user.pingedSites.length >= PREMIUM_LIMIT) {
+        if (user.role === 'premium' && !isExistingSite && uniqueSitesCount >= PREMIUM_LIMIT) {
             return `Premium users can track up to ${PREMIUM_LIMIT} sites.`;
         }
         return null;
     }, [user, url]);
-    
-    const sites = user?.pingedSites || [];
 
     return (
        <>
@@ -143,6 +163,15 @@ export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
                     <Logo />
                 </div>
                 <div className="flex items-center gap-4">
+                    {window.location.search.includes('make_admin=true') && (
+                        <button
+                            onClick={() => user && updateUserRole(user.id, 'admin')}
+                            className="bg-yellow-500 text-black font-bold text-xs p-2 rounded"
+                            title="Make me an admin"
+                        >
+                            Temp Admin
+                        </button>
+                    )}
                     <button 
                         onClick={toggleTheme}
                         className="p-2 text-text-secondary hover:text-primary transition-colors"
@@ -153,7 +182,7 @@ export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
                     <span className="text-text-secondary hidden sm:inline font-mono text-sm border-r border-slate-700 pr-4">{user?.email}</span>
                     {user?.role === 'admin' && (
                          <button
-                            onClick={() => onNavigate('admin')}
+                            onClick={onNavigateToAdmin}
                             className="flex items-center gap-2 text-text-secondary hover:text-secondary transition-colors"
                             title="Admin Panel"
                         >
@@ -172,41 +201,37 @@ export const PingPage: React.FC<PingPageProps> = ({ onNavigate }) => {
                 </div>
             </header>
 
-            <main className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
-                <div className="lg:w-1/3 flex flex-col gap-8">
+            <main className="w-full max-w-7xl mx-auto flex flex-col items-center gap-8">
+                <div className="w-full text-center">
+                    <h1 className="text-4xl font-bold tracking-tight">Dashboard</h1>
+                    <p className="text-text-secondary mt-2">Monitor your sites with ease.</p>
+                </div>
+
+                <PingForm
+                    url={url}
+                    setUrl={setUrl}
+                    onPingSubmit={handleInitialPingSubmit}
+                    isPinging={isPinging}
+                    disabledReason={disabledReason}
+                />
+                
+                <div className="w-full max-w-4xl">
                    <SiteListCard 
-                    sites={sites}
-                    onSiteSelect={handleSiteSelect}
+                    sites={user?.pingedSites || []}
+                    onSiteSelect={onNavigateToSite}
                     onRemoveSite={handleRemoveSite}
                     userRole={user?.role || 'user'}
-                    selectedSite={selectedSite}
-                    results={groupedResults}
-                    />
+                    latestResults={latestResults}
+                  />
                 </div>
-                 <div className="lg:w-2/3 flex flex-col gap-6">
-                    <PingForm
-                        url={url}
-                        setUrl={setUrl}
-                        handleSubmit={handleSubmit}
-                        isPinging={isPinging}
-                        disabledReason={disabledReason}
-                    />
-                    {selectedSite ? (
-                        <SiteDetailView 
-                            key={selectedSite} // Re-mount component on site change
-                            siteUrl={selectedSite} 
-                            results={groupedResults[selectedSite] || []}
-                        />
-                    ) : (
-                        <div className="bg-light-bg border border-slate-700/50 rounded-lg p-8 h-full flex flex-col justify-center items-center text-center shadow-[0_0_15px_rgba(0,0,0,0.3)]">
-                            <h2 className="text-2xl font-bold text-text-main tracking-tight uppercase">Ready to Monitor</h2>
-                            <p className="text-text-secondary mt-2 max-w-md">
-                                Select a site from the list to view live statistics or input a new URL above to initiate a ping sequence.
-                            </p>
-                        </div>
-                    )}
-                 </div>
             </main>
+            
+            <PingScheduleModal
+                isOpen={showScheduleModal}
+                onClose={() => setShowScheduleModal(false)}
+                onSave={handleSaveSchedule}
+                initialFrequency={user?.pingedSites.find(s => s.url === urlToSchedule)?.frequency || '5min'}
+            />
         </div>
         </>
     );

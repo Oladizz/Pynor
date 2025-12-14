@@ -20,7 +20,19 @@ export const AuthPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     
+    // Validation error states
+    const [emailValidationError, setEmailValidationError] = useState<string | null>(null);
+    const [passwordValidationError, setPasswordValidationError] = useState<string | null>(null);
+    const [nameValidationError, setNameValidationError] = useState<string | null>(null);
+    const [termsValidationError, setTermsValidationError] = useState<string | null>(null);
+
     const { login, signup } = useAuth();
+
+    // Helper function for email validation
+    const isValidEmail = (email: string) => {
+        // Basic email regex, can be improved
+        return /\S+@\S+\.\S+/.test(email);
+    };
 
     // Reset state when switching views
     const switchView = (newView: AuthView) => {
@@ -33,6 +45,27 @@ export const AuthPage: React.FC = () => {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setEmailValidationError(null);
+        setPasswordValidationError(null);
+
+        // Client-side validation
+        if (!email) {
+            setEmailValidationError('Email is required.');
+            return;
+        }
+        if (!isValidEmail(email)) {
+            setEmailValidationError('Please enter a valid email address.');
+            return;
+        }
+        if (!password) {
+            setPasswordValidationError('Password is required.');
+            return;
+        }
+        if (password.length < 6) { // Firebase minimum password length
+            setPasswordValidationError('Password must be at least 6 characters long.');
+            return;
+        }
+
         setIsLoading(true);
         try {
             await login(email, password);
@@ -45,6 +78,39 @@ export const AuthPage: React.FC = () => {
     const handleSignup = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setEmailValidationError(null);
+        setPasswordValidationError(null);
+        setNameValidationError(null);
+        setTermsValidationError(null);
+
+        // Client-side validation for signup
+        if (!name.trim()) {
+            setNameValidationError('Full Name is required.');
+            return;
+        }
+        if (!email) {
+            setEmailValidationError('Work Email is required.');
+            return;
+        }
+        if (!isValidEmail(email)) {
+            setEmailValidationError('Please enter a valid email address.');
+            return;
+        }
+        if (!password) {
+            setPasswordValidationError('Password is required.');
+            return;
+        }
+        if (password.length < 6) { 
+            setPasswordValidationError('Password must be at least 6 characters long.');
+            return;
+        }
+        // Assuming terms checkbox has 'required' HTML attribute handling.
+        const termsCheckbox = document.getElementById('terms') as HTMLInputElement;
+        if (!termsCheckbox || !termsCheckbox.checked) {
+            setTermsValidationError('You must agree to the Terms and Privacy Policy.');
+            return;
+        }
+
         setIsLoading(true);
         try {
             await signup(email, password);
@@ -59,6 +125,17 @@ export const AuthPage: React.FC = () => {
     const handleForgotPassword = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setEmailValidationError(null);
+
+        if (!email) {
+            setEmailValidationError('Email is required.');
+            return;
+        }
+        if (!isValidEmail(email)) {
+            setEmailValidationError('Please enter a valid email address.');
+            return;
+        }
+
         setIsLoading(true);
         // Simulate API call
         setTimeout(() => {
@@ -70,6 +147,17 @@ export const AuthPage: React.FC = () => {
     const handleSSO = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setEmailValidationError(null);
+
+        if (!email) {
+            setEmailValidationError('Company Email is required.');
+            return;
+        }
+        if (!isValidEmail(email)) {
+            setEmailValidationError('Please enter a valid email address.');
+            return;
+        }
+
         setIsLoading(true);
         // Simulate SSO lookup
         setTimeout(() => {
@@ -83,27 +171,6 @@ export const AuthPage: React.FC = () => {
         }, 1500);
     };
     
-    const handleAdminDemo = async () => {
-        setError(null);
-        setIsLoading(true);
-        try {
-            await login('admin@pynor.com', 'admin123');
-        } catch (err: any) {
-            setError(err.message);
-            setIsLoading(false);
-        }
-    }
-
-    if (view === 'landing') {
-        return (
-            <LandingPage 
-                onLoginClick={() => switchView('login')} 
-                onGetStartedClick={() => switchView('signup')} 
-                onAdminClick={handleAdminDemo} 
-            />
-        );
-    }
-
     // Shared Components for the Auth Layout
     const LeftPanel = () => (
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black flex-col justify-between p-16 text-white">
@@ -180,7 +247,12 @@ export const AuthPage: React.FC = () => {
         </div>
     );
 
-    return (
+    return view === 'landing' ? (
+        <LandingPage
+            onLoginClick={() => switchView('login')}
+            onGetStartedClick={() => switchView('signup')}
+        />
+    ) : (
         <div className="flex min-h-screen bg-dark-bg font-sans">
             <LeftPanel />
 
@@ -212,8 +284,11 @@ export const AuthPage: React.FC = () => {
                                             className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 pl-10 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="name@company.com"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
+                                            onChange={(e) => { setEmail(e.target.value); setEmailValidationError(null); }}
                                         />
+                                        {emailValidationError && (
+                                            <p className="text-red-400 text-xs mt-1 ml-1">{emailValidationError}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
@@ -229,8 +304,11 @@ export const AuthPage: React.FC = () => {
                                             className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 pl-10 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="••••••••"
                                             value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
+                                            onChange={(e) => { setPassword(e.target.value); setPasswordValidationError(null); }}
                                         />
+                                        {passwordValidationError && (
+                                            <p className="text-red-400 text-xs mt-1 ml-1">{passwordValidationError}</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -278,8 +356,11 @@ export const AuthPage: React.FC = () => {
                                             className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 pl-10 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="John Doe"
                                             value={name}
-                                            onChange={(e) => setName(e.target.value)}
+                                            onChange={(e) => { setName(e.target.value); setNameValidationError(null); }}
                                         />
+                                        {nameValidationError && (
+                                            <p className="text-red-400 text-xs mt-1 ml-1">{nameValidationError}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
@@ -292,8 +373,11 @@ export const AuthPage: React.FC = () => {
                                             className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 pl-10 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="name@company.com"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
+                                            onChange={(e) => { setEmail(e.target.value); setEmailValidationError(null); }}
                                         />
+                                        {emailValidationError && (
+                                            <p className="text-red-400 text-xs mt-1 ml-1">{emailValidationError}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="space-y-1">
@@ -306,16 +390,28 @@ export const AuthPage: React.FC = () => {
                                             className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 pl-10 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="Create a strong password"
                                             value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
+                                            onChange={(e) => { setPassword(e.target.value); setPasswordValidationError(null); }}
                                         />
+                                        {passwordValidationError && (
+                                            <p className="text-red-400 text-xs mt-1 ml-1">{passwordValidationError}</p>
+                                        )}
                                     </div>
                                 </div>
                                 
                                 <div className="flex items-start gap-2 pt-2">
-                                    <input type="checkbox" id="terms" required className="mt-1 bg-slate-900 border-slate-700 rounded text-primary focus:ring-primary" />
+                                    <input 
+                                        type="checkbox" 
+                                        id="terms" 
+                                        required 
+                                        className="mt-1 bg-slate-900 border-slate-700 rounded text-primary focus:ring-primary" 
+                                        onChange={() => setTermsValidationError(null)}
+                                    />
                                     <label htmlFor="terms" className="text-xs text-text-secondary">
                                         I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a> and <a href="#" className="text-primary hover:underline">Privacy Policy</a>.
                                     </label>
+                                    {termsValidationError && (
+                                        <p className="text-red-400 text-xs mt-1 ml-1">{termsValidationError}</p>
+                                    )}
                                 </div>
 
                                 {error && (
@@ -376,8 +472,11 @@ export const AuthPage: React.FC = () => {
                                                 className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 pl-10 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                                 placeholder="name@company.com"
                                                 value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
+                                                onChange={(e) => { setEmail(e.target.value); setEmailValidationError(null); }}
                                             />
+                                            {emailValidationError && (
+                                                <p className="text-red-400 text-xs mt-1 ml-1">{emailValidationError}</p>
+                                            )}
                                         </div>
                                     </div>
 
@@ -423,8 +522,11 @@ export const AuthPage: React.FC = () => {
                                             className="w-full bg-slate-900/50 border border-slate-700 rounded-lg p-3 pl-10 text-text-main focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
                                             placeholder="name@company.com"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
+                                            onChange={(e) => { setEmail(e.target.value); setEmailValidationError(null); }}
                                         />
+                                        {emailValidationError && (
+                                            <p className="text-red-400 text-xs mt-1 ml-1">{emailValidationError}</p>
+                                        )}
                                     </div>
                                 </div>
                                 
@@ -470,3 +572,6 @@ export const AuthPage: React.FC = () => {
         </div>
     );
 };
+
+
+

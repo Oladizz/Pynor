@@ -12,12 +12,18 @@ export interface PingResult {
 
 export type UserRole = 'user' | 'premium' | 'admin';
 
+export type PingFrequency = '1min' | '5min' | '15min' | '30min' | '1hr' | '6hr' | '12hr' | '24hr';
+
+export interface PingSite {
+  url: string;
+  frequency: PingFrequency;
+}
+
 export interface User {
   id: string;
   email: string;
-  passwordHash: string; // In a real app, this would be a proper hash.
   role: UserRole;
-  pingedSites: string[];
+  pingedSites: PingSite[]; // Updated to array of PingSite objects
   createdAt: string; // ISO Date string
 }
 
