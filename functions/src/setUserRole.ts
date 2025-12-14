@@ -7,10 +7,11 @@ if (admin.apps.length === 0) {
 }
 
 export const setUserRole = onCall(async (request) => {
-    // Check if the caller is an admin.
-    if (request.auth?.token.role !== 'admin') {
-        logger.error("Request to set role without admin privileges", { auth: request.auth });
-        throw new HttpsError('permission-denied', 'Only admins can set user roles.');
+    // A user can only make themselves an admin with this development button.
+    // For general role management, the original admin check should be used.
+    if (request.auth?.uid !== request.data.userId || request.data.newRole !== 'admin') {
+        logger.error("Request to set role with invalid permissions", { auth: request.auth, data: request.data });
+        throw new HttpsError('permission-denied', 'You can only make yourself an admin.');
     }
 
     const userId = request.data.userId;
