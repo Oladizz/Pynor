@@ -47,3 +47,16 @@ export interface AppSettings {
   animationStyle: AnimationStyle;
   theme: AppTheme;
 }
+
+export type AuditLogAction = 'user_role_change' | 'user_delete' | 'site_add' | 'site_remove';
+
+export interface AuditLog {
+    id: string;
+    timestamp: Date;
+    actorId: string; // UID of the user who performed the action
+    actorEmail: string;
+    action: AuditLogAction;
+    targetId?: string; // e.g., UID of the user being modified
+    targetEmail?: string;
+    details: any; // e.g., { oldRole: 'user', newRole: 'admin' } or { siteUrl: '...' }
+}
