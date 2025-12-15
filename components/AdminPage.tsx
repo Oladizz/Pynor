@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import type { User, UserRole, LandingPageContent, AnimationStyle, PingResult } from '../types'; // Added PingResult
 import { useAppSettings } from '../hooks/useAppSettings';
-import { ArrowLeft, Trash2, Users, Settings, LayoutDashboard, Save, Check, X, Shield, AlertTriangle, Search } from 'lucide-react';
+import { ArrowLeft, Trash2, Users, Settings, LayoutDashboard, Save, Check, X, Shield, AlertTriangle, Search, ChevronLeft, Menu } from 'lucide-react';
 import { DoughnutChart } from './charts/DoughnutChart';
 import { BarChart } from './charts/BarChart';
 import { Spinner } from './Spinner'; // Added Spinner
@@ -38,6 +38,7 @@ export const AdminPage: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) 
     const { getAllUsers, deleteUser, updateUserRole, getAllPingResults } = useAuth();
     const { settings, updateLogoUrl, updateLandingContent, updateAnimationStyle } = useAppSettings();
     const [currentView, setCurrentView] = useState<AdminView>('dashboard');
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     
     // New state for fetched data
     const [users, setUsers] = useState<User[]>([]);
@@ -148,55 +149,85 @@ export const AdminPage: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) 
     };
     
     return (
-        <div className="min-h-screen bg-dark-bg text-text-main font-sans flex flex-col md:flex-row">
+        <div className="min-h-screen bg-dark-bg text-text-main font-sans flex md:flex-row">
             {/* Sidebar */}
-            <aside className="w-full md:w-64 bg-slate-900 border-r border-slate-700 flex flex-col">
-                <div className="p-6 border-b border-slate-700 flex items-center gap-2">
+            <aside className={`
+                fixed inset-y-0 left-0 z-50 flex-col
+                transition-transform duration-300
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} /* Mobile slide in/out */
+                ${isSidebarOpen ? 'w-full bg-slate-900/90 backdrop-blur-md' : 'w-full'} /* Mobile overlay bg/blur */
+                md:relative md:translate-x-0 md:flex /* Desktop positioning & always flex */
+                md:bg-slate-900 md:border-r md:border-slate-700 /* Desktop default bg/border */
+                ${isSidebarOpen ? 'md:w-64' : 'md:w-16 md:items-center'} /* Desktop widths */
+            `}>
+                <div className={`p-6 border-b border-slate-700 flex items-center ${!isSidebarOpen && 'md:justify-center'} ${isSidebarOpen ? 'gap-2' : 'justify-center'}`}>
                     <Shield className="w-8 h-8 text-secondary" />
-                    <span className="text-xl font-bold tracking-tight">Pynor Admin</span>
+                    <span className={`text-xl font-bold tracking-tight whitespace-nowrap ${!isSidebarOpen && 'md:hidden'} ${!isSidebarOpen && 'hidden'}`}>Pynor Admin</span>
                 </div>
                 
-                <nav className="flex-grow p-4 space-y-2">
+                <nav className="flex-grow p-4 space-y-2 w-full">
                     <button 
-                        onClick={() => setCurrentView('dashboard')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${currentView === 'dashboard' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
+                        onClick={() => {setCurrentView('dashboard'); setIsSidebarOpen(false);}}
+                        className={`w-full flex items-center rounded-lg transition-all ${!isSidebarOpen ? 'md:justify-center p-3' : 'gap-3 px-4 py-3'} ${currentView === 'dashboard' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
                     >
                         <LayoutDashboard className="w-5 h-5" />
-                        Dashboard
+                        <span className={`whitespace-nowrap ${!isSidebarOpen && 'md:hidden'} ${!isSidebarOpen && 'hidden'}`}>Dashboard</span>
                     </button>
                     <button 
-                        onClick={() => setCurrentView('users')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${currentView === 'users' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
+                        onClick={() => {setCurrentView('users'); setIsSidebarOpen(false);}}
+                        className={`w-full flex items-center rounded-lg transition-all ${!isSidebarOpen ? 'md:justify-center p-3' : 'gap-3 px-4 py-3'} ${currentView === 'users' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
                     >
                         <Users className="w-5 h-5" />
-                        Users
+                        <span className={`whitespace-nowrap ${!isSidebarOpen && 'md:hidden'} ${!isSidebarOpen && 'hidden'}`}>Users</span>
                     </button>
                     <button 
-                        onClick={() => setCurrentView('settings')}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${currentView === 'settings' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
+                        onClick={() => {setCurrentView('settings'); setIsSidebarOpen(false);}}
+                        className={`w-full flex items-center rounded-lg transition-all ${!isSidebarOpen ? 'md:justify-center p-3' : 'gap-3 px-4 py-3'} ${currentView === 'settings' ? 'bg-primary text-white shadow-md' : 'text-text-secondary hover:bg-slate-800 hover:text-text-main'}`}
                     >
                         <Settings className="w-5 h-5" />
-                        Settings
+                        <span className={`whitespace-nowrap ${!isSidebarOpen && 'md:hidden'} ${!isSidebarOpen && 'hidden'}`}>Settings</span>
                     </button>
                 </nav>
 
-                <div className="p-4 border-t border-slate-700">
+                <div className="p-4 border-t border-slate-700 w-full">
                     <button 
-                        onClick={onNavigate}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-600 text-text-secondary hover:bg-slate-800 hover:text-white transition-colors"
+                        onClick={() => {onNavigate(); setIsSidebarOpen(false);}}
+                        className={`w-full flex items-center rounded-lg border border-slate-600 text-text-secondary hover:bg-slate-800 hover:text-white transition-colors ${!isSidebarOpen ? 'md:justify-center p-3' : 'gap-2 px-4 py-2'}`}
                     >
                         <ArrowLeft className="w-4 h-4" />
-                        Back to App
+                        <span className={`whitespace-nowrap ${!isSidebarOpen && 'md:hidden'} ${!isSidebarOpen && 'hidden'}`}>Back to App</span>
+                    </button>
+                    <button 
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className="mt-4 w-full flex items-center justify-center p-2 rounded-lg text-text-secondary hover:bg-slate-800 hover:text-white transition-colors"
+                        title={isSidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
+                    >
+                        <ChevronLeft className={`w-5 h-5 transition-transform duration-300 ${!isSidebarOpen ? 'rotate-180' : ''}`} />
                     </button>
                 </div>
             </aside>
 
             {/* Main Content */}
             <main className="flex-grow p-4 md:p-8 overflow-y-auto max-h-screen">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-bold capitalize">{currentView}</h1>
-                    <p className="text-text-secondary mt-1">Manage your application and view statistics.</p>
+                <header className="mb-8 flex items-center gap-4">
+                    <button 
+                        onClick={() => setIsSidebarOpen(true)}
+                        className="p-2 rounded-lg text-text-secondary hover:bg-slate-800 hover:text-white transition-colors md:hidden"
+                        title="Open Sidebar"
+                    >
+                        <Menu className="w-6 h-6" />
+                    </button>
+                    <h1 className="text-3xl font-bold capitalize text-white">{currentView}</h1>
                 </header>
+                <p className="text-text-secondary mt-1">Manage your application and view statistics.</p>
+
+                {/* Mobile Sidebar Backdrop */}
+                {isSidebarOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                        onClick={() => setIsSidebarOpen(false)}
+                    ></div>
+                )}
 
                 {dataLoading && (
                     <div className="flex flex-col items-center justify-center h-64">
@@ -215,7 +246,7 @@ export const AdminPage: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) 
                 {!dataLoading && !dataError && (
                     <>
                         {currentView === 'dashboard' && (
-                            <div className="space-y-8 animate-entry">
+                            <div className="space-y-8">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     <StatCard label="Total Users" value={stats.totalUsers} icon={<Users className="w-6 h-6" />} />
                                     <StatCard label="Active Monitors" value={stats.activePings} icon={<Check className="w-6 h-6" />} />
@@ -237,7 +268,7 @@ export const AdminPage: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) 
                         )}
 
                         {currentView === 'users' && (
-                            <div className="bg-light-bg border border-slate-700 rounded-lg shadow-lg overflow-hidden animate-entry">
+                            <div className="bg-light-bg border border-slate-700 rounded-lg shadow-lg overflow-hidden">
                                 <div className="p-4 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
                                     <div className="relative w-full sm:w-64">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -314,7 +345,7 @@ export const AdminPage: React.FC<{ onNavigate: () => void }> = ({ onNavigate }) 
                         )}
 
                         {currentView === 'settings' && (
-                            <div className="space-y-6 animate-entry">
+                            <div className="space-y-6">
                                 <div className="bg-light-bg border border-slate-700 rounded-lg p-6 shadow-lg">
                                     <h3 className="text-lg font-semibold mb-4 border-b border-slate-700 pb-2">General Appearance</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
