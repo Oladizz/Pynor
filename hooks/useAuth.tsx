@@ -8,7 +8,7 @@ import {
     User as FirebaseAuthUser,
 } from 'firebase/auth';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs, deleteDoc, updateDoc, addDoc } from 'firebase/firestore'; // Added addDoc
+import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, deleteDoc, updateDoc, addDoc } from 'firebase/firestore'; // Added addDoc
 import type { User, UserRole, PingResult, PingSite, PingFrequency } from '../types'; // Import PingSite and PingFrequency
 
 // Define an internal AppUser type to extend Firebase's User info with our custom fields
@@ -199,7 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const getAllPingResults = useCallback(async (): Promise<PingResult[]> => {
         const pingsCol = collection(db, 'ping_results');
         // Only fetch pings for the current user
-        const q = user ? query(pingsCol, where("userId", "==", user.id), orderBy("timestamp", "desc"), limit(500)) : query(pingsCol, orderBy("timestamp", "desc"), limit(0));
+        const q = user?.role === 'admin' ? query(pingsCol, orderBy("timestamp", "desc"), limit(500)) : (user ? query(pingsCol, where("userId", "==", user.id), orderBy("timestamp", "desc"), limit(500)) : query(pingsCol, orderBy("timestamp", "desc"), limit(0)));
         const pingsSnapshot = await getDocs(q);
         return pingsSnapshot.docs.map(d => {
             const data = d.data();
