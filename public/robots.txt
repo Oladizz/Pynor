@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pynor.oladizz.xyz/sitemap.xml

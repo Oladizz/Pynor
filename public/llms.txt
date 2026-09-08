@@ -1,0 +1,19 @@
+# Pynor — Free Enterprise Uptime & Performance Monitoring
+
+> A free uptime infrastructure platform engineered by Oladizz Agency (https://oladizz.xyz).
+
+## Overview
+Pynor is an uptime monitoring and status page platform providing real-time HTTP/HTTPS health checks, incident lifecycle tracking, automated downtime notifications (Telegram, Webhooks), and shareable public status pages.
+
+## Key Features
+- Automated 1-minute to 24-hour background ping scheduling
+- Incident State Machine: ongoing outage tracking with calculated downtime duration
+- Instant Telegram bot alerts and Webhook dispatching on downtime and recovery
+- Public Status Pages (`?status=<url>`) accessible without login
+- Built-in AI root-cause diagnostics powered by Gemini
+- Free Tier: Core monitoring is provided 100% free of charge
+
+## Company & Ecosystem
+Pynor is the free flagship acquisition hook of Oladizz Agency.
+- Portfolio: https://oladizz.xyz
+- Official GitHub: https://github.com/Oladizz/Pynor

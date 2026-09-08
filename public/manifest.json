@@ -1,0 +1,9 @@
+{
+  "name": "Pynor — Uptime & Performance Monitoring",
+  "short_name": "Pynor",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#06b6d4",
+  "description": "Free enterprise uptime monitoring and shareable public status pages by Oladizz Agency."
+}
