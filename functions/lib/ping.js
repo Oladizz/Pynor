@@ -32,61 +32,74 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ping = void 0;
 exports.performPing = performPing;
 const https_1 = require("firebase-functions/v2/https");
 const logger = __importStar(require("firebase-functions/logger"));
-const node_fetch_1 = __importDefault(require("node-fetch"));
 /**
- * Performs an HTTP ping to the target URL and returns PingResult.
- * This function is reusable by both HTTP trigger and scheduled functions.
+ * Performs an HTTP/HTTPS ping to the target URL with strict timeout and resilience.
  * @param targetUrl The URL to ping.
+ * @param timeoutMs Timeout in milliseconds (default: 15000ms).
  * @returns A PingResult object.
  */
-async function performPing(targetUrl) {
+async function performPing(targetUrl, timeoutMs = 15000) {
+    var _a;
     logger.info(`Performing ping for ${targetUrl}`, { structuredData: true });
+    let formattedUrl = targetUrl.trim();
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+        formattedUrl = `https://${formattedUrl}`;
+    }
     const startTime = Date.now();
-    let pingResult;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
-        const res = await (0, node_fetch_1.default)(targetUrl, { redirect: 'follow' }); // Follow redirects
+        const res = await fetch(formattedUrl, {
+            signal: controller.signal,
+            redirect: 'follow',
+            headers: {
+                'User-Agent': 'Pynor-Uptime-Monitor/2.0 (Oladizz Agency; +https://oladizz.xyz)',
+            },
+        });
+        clearTimeout(timeoutId);
         const responseTime = Date.now() - startTime;
-        pingResult = {
-            id: crypto.randomUUID(), // Generate a unique ID for each ping result
+        const isOnline = res.ok; // 200-299 status codes
+        return {
+            id: crypto.randomUUID(),
             url: targetUrl,
-            status: res.ok ? "Online" : "Offline",
+            status: isOnline ? "Online" : "Offline",
             responseTime: responseTime,
             statusCode: res.status,
-            statusText: res.statusText,
+            statusText: res.statusText || (isOnline ? "OK" : `HTTP ${res.status}`),
             timestamp: new Date(),
         };
     }
     catch (error) {
+        clearTimeout(timeoutId);
         const responseTime = Date.now() - startTime;
-        logger.error(`Error pinging ${targetUrl}: ${error.message}`, { structuredData: true });
-        pingResult = {
-            id: crypto.randomUUID(), // Generate a unique ID for each ping result
+        const isTimeout = error.name === 'AbortError' || ((_a = error.message) === null || _a === void 0 ? void 0 : _a.includes('aborted'));
+        const errorMessage = isTimeout
+            ? `Request timed out after ${timeoutMs / 1000}s`
+            : (error.message || "Network connection failure");
+        logger.warn(`Error pinging ${targetUrl}: ${errorMessage}`, { structuredData: true });
+        return {
+            id: crypto.randomUUID(),
             url: targetUrl,
             status: "Error",
-            responseTime: responseTime, // Still capture response time even on error if request was sent
+            responseTime: responseTime,
             statusCode: null,
-            statusText: error.message,
+            statusText: errorMessage,
             timestamp: new Date(),
         };
     }
-    return pingResult;
 }
 exports.ping = (0, https_1.onCall)(async (request) => {
-    const targetUrl = request.data.url;
-    if (!targetUrl) {
+    var _a;
+    const targetUrl = (_a = request.data) === null || _a === void 0 ? void 0 : _a.url;
+    if (!targetUrl || typeof targetUrl !== "string") {
         logger.warn("Ping request missing target URL", { structuredData: true });
-        throw new https_1.HttpsError("invalid-argument", "The function must be called with " +
-            "one arguments, 'url', containing the URL to ping.");
+        throw new https_1.HttpsError("invalid-argument", "The function must be called with a 'url' string parameter.");
     }
-    // Use the refactored performPing function
     const pingResult = await performPing(targetUrl);
     return pingResult;
 });

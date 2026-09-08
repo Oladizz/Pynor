@@ -14,17 +14,45 @@ export type UserRole = 'user' | 'premium' | 'admin';
 
 export type PingFrequency = '1min' | '5min' | '15min' | '30min' | '1hr' | '6hr' | '12hr' | '24hr';
 
+export interface AlertConfig {
+  telegramChatId?: string;
+  telegramBotToken?: string;
+  webhookUrl?: string;
+  emailAlert?: string;
+  enabled: boolean;
+}
+
 export interface PingSite {
   url: string;
+  name?: string;
   frequency: PingFrequency;
+  lastStatus?: PingStatus;
+  lastCheckedAt?: string;
+  alertConfig?: AlertConfig;
+  isPublic?: boolean;
+}
+
+export type IncidentStatus = 'ongoing' | 'resolved';
+
+export interface Incident {
+  id: string;
+  siteUrl: string;
+  siteName?: string;
+  userId: string;
+  status: IncidentStatus;
+  startedAt: Date;
+  resolvedAt?: Date | null;
+  durationSeconds?: number;
+  cause: string;
+  statusCode?: number | null;
 }
 
 export interface User {
   id: string;
   email: string;
   role: UserRole;
-  pingedSites: PingSite[]; // Updated to array of PingSite objects
-  createdAt: string; // ISO Date string
+  pingedSites: PingSite[];
+  createdAt: string;
 }
 
 export interface LandingPageContent {

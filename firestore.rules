@@ -8,8 +8,14 @@ service cloud.firestore {
 
     match /ping_results/{pingId} {
       allow create: if request.auth != null;
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow get, list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if true; // Public status checks and user history
+      allow get, list: if true;
+    }
+
+    match /incidents/{incidentId} {
+      allow create: if request.auth != null;
+      allow read: if true; // Public status incidents and user dashboard
+      allow update, delete: if request.auth != null && (resource.data.userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
     }
   }
 }

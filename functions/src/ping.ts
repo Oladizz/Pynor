@@ -1,65 +1,80 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
-import fetch from "node-fetch";
-import { PingResult, PingStatus } from "./interface"; // Import PingResult and PingStatus
-
-
+import { PingResult, PingStatus } from "./interface";
 
 /**
- * Performs an HTTP ping to the target URL and returns PingResult.
- * This function is reusable by both HTTP trigger and scheduled functions.
+ * Performs an HTTP/HTTPS ping to the target URL with strict timeout and resilience.
  * @param targetUrl The URL to ping.
+ * @param timeoutMs Timeout in milliseconds (default: 15000ms).
  * @returns A PingResult object.
  */
-export async function performPing(targetUrl: string): Promise<PingResult> {
+export async function performPing(targetUrl: string, timeoutMs: number = 15000): Promise<PingResult> {
     logger.info(`Performing ping for ${targetUrl}`, { structuredData: true });
 
+    let formattedUrl = targetUrl.trim();
+    if (!/^https?:\/\//i.test(formattedUrl)) {
+        formattedUrl = `https://${formattedUrl}`;
+    }
+
     const startTime = Date.now();
-    let pingResult: PingResult;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-        const res = await fetch(targetUrl, { redirect: 'follow' }); // Follow redirects
+        const res = await fetch(formattedUrl, {
+            signal: controller.signal,
+            redirect: 'follow',
+            headers: {
+                'User-Agent': 'Pynor-Uptime-Monitor/2.0 (Oladizz Agency; +https://oladizz.xyz)',
+            },
+        });
+        clearTimeout(timeoutId);
+
         const responseTime = Date.now() - startTime;
-        pingResult = {
-            id: crypto.randomUUID(), // Generate a unique ID for each ping result
+        const isOnline = res.ok; // 200-299 status codes
+
+        return {
+            id: crypto.randomUUID(),
             url: targetUrl,
-            status: res.ok ? "Online" : "Offline" as PingStatus,
+            status: isOnline ? ("Online" as PingStatus) : ("Offline" as PingStatus),
             responseTime: responseTime,
             statusCode: res.status,
-            statusText: res.statusText,
+            statusText: res.statusText || (isOnline ? "OK" : `HTTP ${res.status}`),
             timestamp: new Date(),
         };
     } catch (error: any) {
+        clearTimeout(timeoutId);
         const responseTime = Date.now() - startTime;
-        logger.error(
-            `Error pinging ${targetUrl}: ${error.message}`,
-            { structuredData: true },
-        );
-        pingResult = {
-            id: crypto.randomUUID(), // Generate a unique ID for each ping result
+        const isTimeout = error.name === 'AbortError' || error.message?.includes('aborted');
+        const errorMessage = isTimeout
+            ? `Request timed out after ${timeoutMs / 1000}s`
+            : (error.message || "Network connection failure");
+
+        logger.warn(`Error pinging ${targetUrl}: ${errorMessage}`, { structuredData: true });
+
+        return {
+            id: crypto.randomUUID(),
             url: targetUrl,
             status: "Error" as PingStatus,
-            responseTime: responseTime, // Still capture response time even on error if request was sent
+            responseTime: responseTime,
             statusCode: null,
-            statusText: error.message,
+            statusText: errorMessage,
             timestamp: new Date(),
         };
     }
-    return pingResult;
 }
 
-
 export const ping = onCall(async (request) => {
-  const targetUrl = request.data.url;
+    const targetUrl = request.data?.url;
 
-  if (!targetUrl) {
-    logger.warn("Ping request missing target URL", { structuredData: true });
-    throw new HttpsError("invalid-argument", "The function must be called with " +
-        "one arguments, 'url', containing the URL to ping.");
-  }
+    if (!targetUrl || typeof targetUrl !== "string") {
+        logger.warn("Ping request missing target URL", { structuredData: true });
+        throw new HttpsError(
+            "invalid-argument",
+            "The function must be called with a 'url' string parameter."
+        );
+    }
 
-  // Use the refactored performPing function
-  const pingResult = await performPing(targetUrl);
-
-  return pingResult;
+    const pingResult = await performPing(targetUrl);
+    return pingResult;
 });

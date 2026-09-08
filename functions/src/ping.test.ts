@@ -1,18 +1,20 @@
-import {ping} from "./ping";
-import {Request} from "firebase-functions/v2/https";
-import {Response} from "express";
+import { performPing } from "./ping";
 
-describe("ping function", () => {
-  it("should respond with \"pong\" and status 200", () => {
-    const mockRequest: Partial<Request> = {};
-    const mockResponse: Partial<Response> = {
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn(),
-    };
+describe("performPing unit test suite", () => {
+    it("should correctly handle an invalid or unreachable domain with an Error status", async () => {
+        const result = await performPing("https://this-domain-definitely-does-not-exist-xyz999.org", 3000);
+        expect(result).toBeDefined();
+        expect(result.url).toContain("this-domain-definitely-does-not-exist");
+        expect(result.status).toBe("Error");
+        expect(result.responseTime).toBeGreaterThanOrEqual(0);
+        expect(result.id).toBeDefined();
+    });
 
-    ping(mockRequest as Request, mockResponse as any);
-
-    expect(mockResponse.status).toHaveBeenCalledWith(200);
-    expect(mockResponse.send).toHaveBeenCalledWith("pong");
-  });
+    it("should timeout when request exceeds threshold", async () => {
+        // Fast timeout test with 1ms
+        const result = await performPing("https://google.com", 1);
+        expect(result).toBeDefined();
+        expect(result.status).toBe("Error");
+        expect(result.statusText).toContain("timed out");
+    });
 });

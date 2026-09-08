@@ -6,6 +6,7 @@ import { Spinner } from './components/Spinner';
 import { AdminPage } from './components/AdminPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SiteDetailPage } from './components/SiteDetailPage';
+import { PublicStatusPage } from './components/PublicStatusPage';
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -45,8 +46,19 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     const params = new URLSearchParams(search);
+    const publicStatusSite = params.get('status');
     const siteFromUrl = params.get('site');
     const isAdminPage = params.get('admin') === 'true';
+
+    // Public Status Page: Accessible to anyone without login
+    if (publicStatusSite) {
+      return (
+        <PublicStatusPage
+          siteUrl={decodeURIComponent(publicStatusSite)}
+          onNavigateHome={handleNavigateHome}
+        />
+      );
+    }
 
     if (loading) {
       return (
